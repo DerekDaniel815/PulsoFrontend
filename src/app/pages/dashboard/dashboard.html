@@ -1,0 +1,129 @@
+<div class="dash">
+  <section class="kpis">
+    <article class="card kpi kpi-ok">
+      <div class="kpi-top">
+        <p>ESTADO DE UBICACIÓN</p>
+        <span class="tag live">LIVE</span>
+      </div>
+      <h2>Activa</h2>
+      <small>Precisión 8 m · GPS estable</small>
+    </article>
+    <article class="card kpi kpi-info">
+      <div class="kpi-top">
+        <p>VISIBILIDAD</p>
+        <span class="tag">ACTIVO</span>
+      </div>
+      <h2>Solo autorizados</h2>
+      <small>visibilidadPreferida: GRUPO</small>
+    </article>
+    <article class="card kpi">
+      <div class="kpi-top">
+        <p>CONTACTOS ACTIVOS</p>
+        <span class="tag">ACEPTADOS</span>
+      </div>
+      <h2>5 / 8</h2>
+      <small>3 compartiendo ubicación</small>
+    </article>
+    <article class="card kpi kpi-alert">
+      <div class="kpi-top">
+        <p>ALERTAS</p>
+        <span class="tag danger">3 nuevas</span>
+      </div>
+      <h2>3 alertas</h2>
+      <small>1 emergencia activa</small>
+    </article>
+  </section>
+
+  <section class="stage">
+    <div class="map">
+      <app-live-map />
+    </div>
+
+    <aside class="alert-toast" role="status">
+      <span class="alert-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 4.5 20.5 19H3.5L12 4.5Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+          <path d="M12 10v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="12" cy="16.6" r=".8" fill="currentColor" />
+        </svg>
+      </span>
+      <div class="alert-body">
+        <p class="alert-kicker">Emergencia activa</p>
+        <strong>Carlos Rodríguez</strong>
+        <span>Av. Castellana 180, Madrid · Hace 3 min</span>
+      </div>
+      <a class="alert-link" routerLink="/alertas">Ver</a>
+    </aside>
+
+    <div class="map-foot">
+      <ul class="legend">
+        <li><span class="dot"></span> Conectado</li>
+        <li><span class="dot away"></span> Ausente</li>
+        <li><span class="dot off"></span> Sin conexión</li>
+        <li><span class="dot danger"></span> Emergencia</li>
+      </ul>
+      <a class="expand-map" routerLink="/mapa" title="Abrir mapa completo" aria-label="Abrir mapa a pantalla completa">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </a>
+    </div>
+
+    <div class="float-panels">
+      <article class="card list-card">
+        <h3>Estado de contactos</h3>
+        <ul>
+          @for (contact of contacts; track contact.name) {
+            <li>
+              <span
+                class="avatar"
+                [class.conectado]="contact.status === 'conectado'"
+                [class.emergencia]="contact.status === 'emergencia'"
+                [class.ausente]="contact.status === 'ausente'"
+                [class.sin-conexion]="contact.status === 'sin-conexion'"
+              >
+                {{ contact.initials }}
+              </span>
+              <div>
+                <strong>{{ contact.name }}</strong>
+                <small>{{ contact.relation }} · {{ contact.lastSeen }}</small>
+              </div>
+              <span
+                class="status-dot"
+                [class.conectado]="contact.status === 'conectado'"
+                [class.emergencia]="contact.status === 'emergencia'"
+                [class.ausente]="contact.status === 'ausente'"
+                [class.sin-conexion]="contact.status === 'sin-conexion'"
+              ></span>
+            </li>
+          }
+        </ul>
+      </article>
+
+      <article class="card list-card">
+        <h3>Actividad reciente</h3>
+        <ul>
+          @for (item of activity; track item.title) {
+            <li>
+              <div>
+                <strong>{{ item.title }}</strong>
+                <small>{{ item.time }}</small>
+              </div>
+            </li>
+          }
+        </ul>
+      </article>
+    </div>
+  </section>
+</div>
