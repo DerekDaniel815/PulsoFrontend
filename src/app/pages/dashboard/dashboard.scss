@@ -10,6 +10,7 @@
   gap: 10px;
   flex: 1;
   min-height: 0;
+  position: relative;
 }
 
 .kpis {
@@ -210,7 +211,7 @@
   background: rgba(11, 14, 20, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
-  text-decoration: none;
+  cursor: pointer;
 }
 
 .expand-map:hover,
@@ -340,6 +341,58 @@
 
 .status-dot.sin-conexion {
   background: #667;
+}
+
+.dash.is-map-expanded .kpis,
+.dash.is-map-expanded .alert-toast,
+.dash.is-map-expanded .map-foot {
+  transition: left 0.22s ease;
+}
+
+.dash.is-map-expanded .kpis {
+  position: absolute;
+  top: 12px;
+  left: calc(var(--overlay-nav-width, var(--sidebar-width)) + 24px);
+  right: 256px;
+  z-index: 4;
+  gap: 8px;
+}
+
+.dash.is-map-expanded .kpi {
+  padding: 6px 8px;
+  background: rgba(11, 14, 20, 0.42);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  backdrop-filter: blur(8px);
+}
+
+.dash.is-map-expanded .kpi-alert {
+  background: rgba(28, 10, 12, 0.5);
+  border-color: rgba(255, 77, 77, 0.32);
+}
+
+.dash.is-map-expanded .kpi small {
+  display: none;
+}
+
+.dash.is-map-expanded .kpi h2 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.dash.is-map-expanded .alert-toast {
+  top: 72px;
+  left: calc(var(--overlay-nav-width, var(--sidebar-width)) + 24px);
+}
+
+.dash.is-map-expanded .map-foot {
+  left: calc(var(--overlay-nav-width, var(--sidebar-width)) + 24px);
+}
+
+.dash.is-map-expanded .stage {
+  flex: 1;
+  border-radius: 0;
+  border: 0;
 }
 
 @media (max-width: 1100px) {

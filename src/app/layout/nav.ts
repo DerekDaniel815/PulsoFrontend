@@ -1,6 +1,5 @@
 export type NavIcon =
   | 'dashboard'
-  | 'map'
   | 'contacts'
   | 'groups'
   | 'alerts'
@@ -17,7 +16,6 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-  { path: '/mapa', label: 'Mapa', icon: 'map' },
   { path: '/contactos', label: 'Contactos', icon: 'contacts' },
   { path: '/grupos', label: 'Grupos', icon: 'groups' },
   { path: '/alertas', label: 'Alertas', icon: 'alerts', badge: 3 },

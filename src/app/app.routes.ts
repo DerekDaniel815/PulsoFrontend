@@ -17,7 +17,7 @@ export const routes: Routes = [
       },
       {
         path: 'mapa',
-        loadComponent: () => import('./pages/mapa/mapa').then((m) => m.Mapa),
+        redirectTo: 'dashboard',
       },
       {
         path: 'contactos',

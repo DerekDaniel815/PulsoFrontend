@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
+import { LayoutMode } from './layout-mode';
 import { NAV_ITEMS } from './nav';
 
 @Component({
@@ -12,6 +13,7 @@ import { NAV_ITEMS } from './nav';
 })
 export class Shell {
   private readonly router = inject(Router);
+  protected readonly layout = inject(LayoutMode);
 
   protected readonly navItems = NAV_ITEMS;
 
@@ -28,4 +30,15 @@ export class Shell {
     const current = this.url();
     return this.navItems.find((item) => current.startsWith(item.path))?.label ?? 'Dashboard';
   });
+
+  protected onSidebarClick(event: Event): void {
+    if (!this.layout.mapExpanded()) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest('a.nav-link')) {
+      return;
+    }
+    this.layout.toggleOverlayNav();
+  }
 }

@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, input, signal } from '@angular/core';
 import { GoogleMap, MapMarker } from '@angular/google-maps';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
 import { DARK_MAP_STYLES, MAP_CENTER, MAP_POINTS, markerOptions } from '../../core/maps/map-theme';
@@ -19,6 +19,8 @@ interface ReadyMarker {
 export class LiveMap {
   private readonly loader = inject(GoogleMapsLoader);
 
+  readonly overlayLayout = input(false);
+
   protected readonly ready = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly center = MAP_CENTER;
@@ -28,6 +30,20 @@ export class LiveMap {
 
   constructor() {
     void this.init();
+    effect(() => {
+      const overlay = this.overlayLayout();
+      if (!this.ready() || !globalThis.google?.maps) {
+        return;
+      }
+      this.options.update((current) => ({
+        ...current,
+        zoomControlOptions: {
+          position: overlay
+            ? google.maps.ControlPosition.RIGHT_BOTTOM
+            : google.maps.ControlPosition.LEFT_BOTTOM,
+        },
+      }));
+    });
   }
 
   private async init(): Promise<void> {

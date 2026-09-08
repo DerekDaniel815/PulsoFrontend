@@ -1,5 +1,14 @@
-<div class="shell">
-  <aside class="sidebar" aria-label="Navegación principal">
+<div
+  class="shell"
+  [class.is-map-expanded]="layout.mapExpanded()"
+  [class.is-overlay-nav-collapsed]="layout.mapExpanded() && !layout.overlayNavOpen()"
+>
+  <aside
+    class="sidebar"
+    aria-label="Navegación principal"
+    [attr.title]="layout.mapExpanded() ? (layout.overlayNavOpen() ? 'Encoger menú' : 'Expandir menú') : null"
+    (click)="onSidebarClick($event)"
+  >
     <div class="brand">
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none">
@@ -23,6 +32,8 @@
           class="nav-link"
           [routerLink]="item.path"
           routerLinkActive="is-active"
+          [attr.title]="item.label"
+          [attr.aria-label]="item.label"
           [attr.aria-current]="pageTitle() === item.label ? 'page' : null"
         >
           <span class="nav-icon" aria-hidden="true">
@@ -33,17 +44,6 @@
                   <rect x="13.5" y="3.5" width="7" height="4.5" rx="1.6" stroke="currentColor" stroke-width="1.6" />
                   <rect x="13.5" y="10.5" width="7" height="10" rx="1.6" stroke="currentColor" stroke-width="1.6" />
                   <rect x="3.5" y="13" width="7" height="7.5" rx="1.6" stroke="currentColor" stroke-width="1.6" />
-                </svg>
-              }
-              @case ('map') {
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path
-                    d="M8.5 5.5 3.5 7.2v12.2l5-1.6 7 1.6 5-1.7V5.5l-5 1.7-7-1.7Z"
-                    stroke="currentColor"
-                    stroke-width="1.6"
-                    stroke-linejoin="round"
-                  />
-                  <path d="M8.5 5.5v12.3M15.5 7.2v12.2" stroke="currentColor" stroke-width="1.6" />
                 </svg>
               }
               @case ('contacts') {

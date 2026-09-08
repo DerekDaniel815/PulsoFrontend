@@ -1,4 +1,4 @@
-<div class="dash">
+<div class="dash" [class.is-map-expanded]="mapExpanded()">
   <section class="kpis">
     <article class="card kpi kpi-ok">
       <div class="kpi-top">
@@ -36,7 +36,7 @@
 
   <section class="stage">
     <div class="map">
-      <app-live-map />
+      <app-live-map [overlayLayout]="mapExpanded()" />
     </div>
 
     <aside class="alert-toast" role="status">
@@ -67,17 +67,36 @@
         <li><span class="dot off"></span> Sin conexión</li>
         <li><span class="dot danger"></span> Emergencia</li>
       </ul>
-      <a class="expand-map" routerLink="/mapa" title="Abrir mapa completo" aria-label="Abrir mapa a pantalla completa">
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path
-            d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-        </svg>
-      </a>
+      <button
+        class="expand-map"
+        type="button"
+        (click)="toggleMapExpand()"
+        [attr.aria-pressed]="mapExpanded()"
+        [attr.aria-label]="mapExpanded() ? 'Salir de pantalla completa' : 'Mapa a pantalla completa'"
+        [title]="mapExpanded() ? 'Salir de pantalla completa' : 'Mapa a pantalla completa'"
+      >
+        @if (mapExpanded()) {
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M9 9 4 4m5 0H4v5M15 9l5-5m-5 0h5v5M9 15l-5 5m5 0H4v-5M15 15l5 5m-5 0h5v-5"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        }
+      </button>
     </div>
 
     <div class="float-panels">
