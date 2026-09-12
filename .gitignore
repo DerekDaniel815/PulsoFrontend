@@ -12,6 +12,8 @@ npm-debug.log
 yarn-error.log
 
 # Secretos locales (API keys)
+.env
+.env.local
 public/maps-config.json
 src/environments/environment.local.ts
 

@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
+    "maps:config": "node scripts/generate-maps-config.mjs",
+    "prestart": "npm run maps:config",
     "start": "ng serve",
+    "prebuild": "npm run maps:config",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
