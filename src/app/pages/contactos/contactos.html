@@ -1,0 +1,169 @@
+<section class="contacts-page" aria-labelledby="contacts-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Red de confianza</p>
+      <h1 id="contacts-title">Contactos</h1>
+      <p class="intro">{{ activeContacts() }} activos · {{ contacts.length }} en total</p>
+    </div>
+    <button class="add-contact" type="button">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 5v14M5 12h14"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        />
+      </svg>
+      Agregar contacto
+    </button>
+  </header>
+
+  <div class="toolbar">
+    <label class="search-box">
+      <span class="sr-only">Buscar contacto</span>
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="10.5" cy="10.5" r="5.5" stroke="currentColor" stroke-width="1.6" />
+        <path d="m15 15 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </svg>
+      <input
+        type="search"
+        placeholder="Buscar contacto..."
+        [value]="searchTerm()"
+        (input)="updateSearch($event)"
+      />
+    </label>
+
+    <div class="group-filters" role="group" aria-label="Filtrar por grupo">
+      @for (group of groups; track group) {
+        <button
+          type="button"
+          [class.is-active]="selectedGroup() === group"
+          [attr.aria-pressed]="selectedGroup() === group"
+          (click)="selectGroup(group)"
+        >
+          {{ group }}
+        </button>
+      }
+    </div>
+
+    <label class="status-filter">
+      <span class="sr-only">Filtrar por estado</span>
+      <select [value]="selectedStatus()" (change)="selectStatus($event)">
+        <option value="all">Todos los estados</option>
+        <option value="connected">Conectados</option>
+        <option value="emergency">Emergencias</option>
+        <option value="away">Ausentes</option>
+        <option value="offline">Sin conexión</option>
+      </select>
+    </label>
+
+    <div class="view-switcher" role="group" aria-label="Cambiar presentación">
+      <button
+        type="button"
+        [class.is-active]="viewMode() === 'list'"
+        [attr.aria-pressed]="viewMode() === 'list'"
+        aria-label="Vista de lista"
+        (click)="setViewMode('list')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M8 7h11M8 12h11M8 17h11M4.5 7h.1M4.5 12h.1M4.5 17h.1"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <button
+        type="button"
+        [class.is-active]="viewMode() === 'grid'"
+        [attr.aria-pressed]="viewMode() === 'grid'"
+        aria-label="Vista de cuadrícula"
+        (click)="setViewMode('grid')"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="4" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+          <rect x="14" y="4" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+          <rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.5" />
+          <rect
+            x="14"
+            y="14"
+            width="6"
+            height="6"
+            rx="1"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div
+    class="contacts-table"
+    [class.is-grid]="viewMode() === 'grid'"
+    role="table"
+    aria-label="Listado de contactos"
+  >
+    <div class="table-head" role="row">
+      <span role="columnheader">Contacto</span>
+      <span role="columnheader">Grupo</span>
+      <span role="columnheader">Estado</span>
+      <span role="columnheader">Última conexión</span>
+      <span role="columnheader">Distancia</span>
+      <span role="columnheader">Ubicación</span>
+      <span role="columnheader">Acciones</span>
+    </div>
+
+    <div class="table-body" role="rowgroup">
+      @for (contact of filteredContacts(); track contact.id) {
+        <article class="contact-row" role="row">
+          <div class="contact-identity" role="cell">
+            <span class="avatar" [style.background]="contact.avatarColor">{{
+              contact.initials
+            }}</span>
+            <div>
+              <strong>{{ contact.name }}</strong
+              ><small>{{ contact.address }}</small>
+            </div>
+          </div>
+          <div role="cell">
+            <span
+              class="group-tag"
+              [class]="'group-tag group-' + contact.group.toLocaleLowerCase()"
+              >{{ contact.group }}</span
+            >
+          </div>
+          <div role="cell">
+            <span class="contact-status" [class]="'contact-status status-' + contact.status"
+              ><span aria-hidden="true"></span>{{ statusLabels[contact.status] }}</span
+            >
+          </div>
+          <div class="secondary" role="cell" data-label="Última conexión">
+            {{ contact.lastConnection }}
+          </div>
+          <div class="secondary" role="cell" data-label="Distancia">{{ contact.distance }}</div>
+          <div role="cell" data-label="Ubicación">
+            <span class="location-state" [class.is-inactive]="!contact.locationActive"
+              ><span aria-hidden="true"></span
+              >{{ contact.locationActive ? 'Activa' : 'Inactiva' }}</span
+            >
+          </div>
+          <div class="actions" role="cell">
+            <a routerLink="/dashboard">Ver mapa</a>
+            <button type="button">Permisos</button>
+          </div>
+        </article>
+      } @empty {
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="10.5" cy="10.5" r="5.5" stroke="currentColor" stroke-width="1.6" />
+            <path d="m15 15 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          </svg>
+          <strong>No encontramos contactos</strong>
+          <p>Prueba con otro nombre, grupo o estado.</p>
+        </div>
+      }
+    </div>
+  </div>
+</section>
