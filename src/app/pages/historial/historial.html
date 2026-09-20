@@ -1,0 +1,136 @@
+<section class="history-page" aria-labelledby="history-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Actividad de ubicación</p>
+      <h1 id="history-title">Historial de ubicaciones</h1>
+      <p class="intro">Registro de los últimos 30 días</p>
+    </div>
+    <button class="export-button" type="button" (click)="exportData()">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 4v11m0 0 4-4m-4 4-4-4M5 18.5h14"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+      Exportar datos
+    </button>
+  </header>
+
+  <div class="period-filters" role="group" aria-label="Seleccionar periodo del historial">
+    <button
+      type="button"
+      [class.is-active]="selectedPeriod() === 'today'"
+      [attr.aria-pressed]="selectedPeriod() === 'today'"
+      (click)="selectPeriod('today')"
+    >
+      Hoy
+    </button>
+    <button
+      type="button"
+      [class.is-active]="selectedPeriod() === 'yesterday'"
+      [attr.aria-pressed]="selectedPeriod() === 'yesterday'"
+      (click)="selectPeriod('yesterday')"
+    >
+      Ayer
+    </button>
+    <button
+      type="button"
+      [class.is-active]="selectedPeriod() === 'week'"
+      [attr.aria-pressed]="selectedPeriod() === 'week'"
+      (click)="selectPeriod('week')"
+    >
+      Esta semana
+    </button>
+    <button
+      type="button"
+      [class.is-active]="selectedPeriod() === 'month'"
+      [attr.aria-pressed]="selectedPeriod() === 'month'"
+      (click)="selectPeriod('month')"
+    >
+      Este mes
+    </button>
+    <label class="date-filter" [class.is-active]="selectedPeriod() === 'custom'">
+      <span class="sr-only">Seleccionar una fecha</span>
+      <input type="date" [value]="selectedDate()" (change)="selectDate($event)" />
+    </label>
+  </div>
+
+  <div class="history-layout">
+    <aside class="timeline-panel" aria-labelledby="timeline-title">
+      <h2 id="timeline-title">Línea de tiempo</h2>
+      <ol>
+        @for (point of history().points; track point.time + point.location; let first = $first) {
+          <li [class.is-current]="first">
+            <time>{{ point.time }}</time>
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div>
+              <h3>{{ point.location }}</h3>
+              <p>{{ point.activity }} <span>·</span> {{ point.accuracy }}</p>
+            </div>
+          </li>
+        }
+      </ol>
+    </aside>
+
+    <div class="route-column">
+      <figure class="route-map">
+        <figcaption>Recorrido del periodo · {{ history().points.length }} puntos</figcaption>
+        <svg
+          viewBox="0 0 110 100"
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="Representación del recorrido registrado"
+        >
+          <polyline
+            [attr.points]="routePoints()"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="0.65"
+            stroke-dasharray="2 1.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          @for (point of history().points; track point.time + point.location; let first = $first) {
+            @if (first) {
+              <circle
+                [attr.cx]="point.mapX"
+                [attr.cy]="point.mapY"
+                r="3.2"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="0.45"
+              />
+            }
+            <circle
+              [attr.cx]="point.mapX"
+              [attr.cy]="point.mapY"
+              [attr.r]="first ? 1.9 : 1.45"
+              [attr.class]="first ? 'route-current' : 'route-point'"
+            />
+          }
+        </svg>
+      </figure>
+
+      <section class="metrics" aria-label="Resumen del recorrido">
+        <article>
+          <span class="metric-icon distance" aria-hidden="true">⌖</span>
+          <strong>{{ history().distance }}</strong>
+          <p>Distancia total</p>
+        </article>
+        <article>
+          <span class="metric-icon time" aria-hidden="true">◷</span>
+          <strong>{{ history().activeTime }}</strong>
+          <p>Tiempo activo</p>
+        </article>
+        <article>
+          <span class="metric-icon points" aria-hidden="true">⌘</span>
+          <strong>{{ history().points.length }} puntos</strong>
+          <p>Ubicaciones</p>
+        </article>
+      </section>
+    </div>
+  </div>
+</section>
