@@ -1,0 +1,368 @@
+:host {
+  display: block;
+}
+
+.history-page {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-heading,
+.period-filters,
+.timeline-panel li,
+.metrics,
+.export-button {
+  display: flex;
+  align-items: center;
+}
+
+.page-heading {
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 3px;
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 3px;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.intro {
+  margin-bottom: 0;
+  color: var(--text-muted);
+}
+
+.export-button {
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid rgba(0, 209, 255, 0.32);
+  border-radius: 11px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.export-button:hover,
+.period-filters button:hover {
+  border-color: var(--primary);
+}
+
+.export-button:focus-visible,
+.period-filters button:focus-visible,
+.date-filter:focus-within {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.export-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.period-filters {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.period-filters button,
+.date-filter {
+  min-height: 38px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+}
+
+.period-filters button {
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.period-filters button.is-active,
+.date-filter.is-active {
+  border-color: rgba(0, 209, 255, 0.4);
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.date-filter {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.date-filter input {
+  border: 0;
+  outline: 0;
+  color: inherit;
+  color-scheme: dark;
+  background: transparent;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.history-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.65fr);
+  gap: 16px;
+  min-height: 610px;
+}
+
+.timeline-panel,
+.route-map,
+.metrics article {
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+}
+
+.timeline-panel {
+  padding: 22px;
+}
+
+.timeline-panel > h2 {
+  margin-bottom: 22px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.timeline-panel ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-panel li {
+  position: relative;
+  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 48px 14px 1fr;
+  gap: 9px;
+  min-height: 74px;
+}
+
+.timeline-panel li:not(:last-child)::after {
+  position: absolute;
+  top: 18px;
+  bottom: -2px;
+  left: 63px;
+  width: 1px;
+  background: var(--border-strong);
+  content: '';
+}
+
+.timeline-panel time {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.timeline-dot {
+  z-index: 1;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  border: 2px solid #344362;
+  border-radius: 50%;
+  background: var(--bg-elevated);
+}
+
+.is-current .timeline-dot {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.timeline-panel h3 {
+  margin-bottom: 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.timeline-panel li:not(.is-current) h3 {
+  color: var(--text-muted);
+}
+
+.timeline-panel p {
+  margin-bottom: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.timeline-panel p span {
+  margin: 0 3px;
+}
+
+.route-column {
+  display: grid;
+  grid-template-rows: minmax(430px, 1fr) auto;
+  gap: 16px;
+  min-width: 0;
+}
+
+.route-map {
+  position: relative;
+  min-height: 430px;
+  margin: 0;
+  overflow: hidden;
+  color: var(--primary);
+  background-color: #0e1725;
+  background-image:
+    linear-gradient(90deg, transparent 44%, #162339 44%, #162339 56%, transparent 56%),
+    linear-gradient(transparent 43%, #162339 43%, #162339 57%, transparent 57%);
+  background-size: 165px 130px;
+}
+
+.route-map::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(11, 14, 20, 0.05), rgba(11, 14, 20, 0.25));
+  content: '';
+  pointer-events: none;
+}
+
+.route-map figcaption {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 2;
+  padding: 7px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--primary);
+  background: rgba(11, 14, 20, 0.78);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.route-map svg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.route-point {
+  fill: #253657;
+  stroke: #344e7e;
+  stroke-width: 0.35;
+}
+
+.route-current {
+  fill: var(--primary);
+}
+
+.metrics {
+  gap: 12px;
+}
+
+.metrics article {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 18px;
+}
+
+.metric-icon {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-size: 20px;
+}
+
+.metric-icon.time {
+  color: var(--warning);
+}
+
+.metric-icon.points {
+  color: var(--success);
+}
+
+.metrics strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 19px;
+}
+
+.metrics p {
+  margin-bottom: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+@media (max-width: 900px) {
+  .history-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .timeline-panel {
+    max-height: 430px;
+    overflow: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .export-button {
+    width: 100%;
+  }
+
+  .period-filters button,
+  .date-filter {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+  }
+
+  .route-column {
+    grid-template-rows: 360px auto;
+  }
+
+  .route-map {
+    min-height: 360px;
+  }
+
+  .metrics {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

@@ -1,17 +1,48 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
+
+type PersonalStatus = 'safe' | 'attention' | 'emergency' | 'unknown';
+type GpsPrecision = 'high' | 'balanced' | 'battery';
+type UpdateFrequency = '10s' | '30s' | '1m' | '5m';
 
 @Component({
   selector: 'app-configuracion',
-  template: `
-    <section class="page">
-      <div class="page-head">
-        <h1>Configuración</h1>
-        <p>Perfil, visibilidad (SOLO_YO / GRUPO / PUBLICO) y dispositivos vinculados.</p>
-      </div>
-      <article class="card empty-card">
-        Preferencias de cuenta y dispositivo. Por ahora solo deja el espacio de la vista.
-      </article>
-    </section>
-  `,
+  templateUrl: './configuracion.html',
+  styleUrl: './configuracion.scss',
 })
-export class Configuracion {}
+export class Configuracion {
+  protected readonly personalStatus = signal<PersonalStatus>('safe');
+  protected readonly gpsEnabled = signal(true);
+  protected readonly precision = signal<GpsPrecision>('high');
+  protected readonly frequency = signal<UpdateFrequency>('30s');
+  protected readonly notificationsEnabled = signal(true);
+  protected readonly globalEmergencyEnabled = signal(false);
+  protected readonly actionMessage = signal('');
+
+  protected setPersonalStatus(status: PersonalStatus): void {
+    this.personalStatus.set(status);
+  }
+
+  protected toggleGps(): void {
+    this.gpsEnabled.update((enabled) => !enabled);
+  }
+
+  protected setPrecision(precision: GpsPrecision): void {
+    this.precision.set(precision);
+  }
+
+  protected setFrequency(frequency: UpdateFrequency): void {
+    this.frequency.set(frequency);
+  }
+
+  protected toggleNotifications(): void {
+    this.notificationsEnabled.update((enabled) => !enabled);
+  }
+
+  protected toggleGlobalEmergency(): void {
+    this.globalEmergencyEnabled.update((enabled) => !enabled);
+  }
+
+  protected executeAction(message: string): void {
+    this.actionMessage.set(message);
+  }
+}

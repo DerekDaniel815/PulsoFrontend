@@ -1,0 +1,229 @@
+<section class="alerts-page" aria-labelledby="alerts-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Centro de notificaciones</p>
+      <h1 id="alerts-title">Alertas</h1>
+      <p class="intro">Revisa los eventos importantes de tus contactos y dispositivos.</p>
+    </div>
+    <span class="live-status"><span aria-hidden="true"></span>Actualización en tiempo real</span>
+  </header>
+
+  <div class="filter-grid" role="group" aria-label="Filtrar alertas">
+    <button
+      class="filter-card unread"
+      type="button"
+      [class.is-active]="selectedFilter() === 'unread'"
+      [attr.aria-pressed]="selectedFilter() === 'unread'"
+      (click)="selectFilter('unread')"
+    >
+      <span class="filter-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M6 16.5h12l-1.2-2.1V10a4.8 4.8 0 0 0-9.6 0v4.4L6 16.5Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+          />
+          <path d="M10 18.2a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" />
+        </svg>
+      </span>
+      <span class="filter-copy"
+        ><span>Sin leer</span><strong>{{ counts().unread }}</strong></span
+      >
+      <span class="filter-detail">Pendientes de revisar</span>
+    </button>
+
+    <button
+      class="filter-card critical"
+      type="button"
+      [class.is-active]="selectedFilter() === 'critical'"
+      [attr.aria-pressed]="selectedFilter() === 'critical'"
+      (click)="selectFilter('critical')"
+    >
+      <span class="filter-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 4.5 20.5 19H3.5L12 4.5Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+          <path d="M12 10v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="12" cy="16.6" r=".8" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="filter-copy"
+        ><span>Críticas</span><strong>{{ counts().critical }}</strong></span
+      >
+      <span class="filter-detail">Requieren atención inmediata</span>
+    </button>
+
+    <button
+      class="filter-card warning"
+      type="button"
+      [class.is-active]="selectedFilter() === 'warning'"
+      [attr.aria-pressed]="selectedFilter() === 'warning'"
+      (click)="selectFilter('warning')"
+    >
+      <span class="filter-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6" />
+          <path d="M12 8v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="12" cy="16" r=".8" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="filter-copy"
+        ><span>Advertencias</span><strong>{{ counts().warning }}</strong></span
+      >
+      <span class="filter-detail">Cambios que debes conocer</span>
+    </button>
+
+    <button
+      class="filter-card info"
+      type="button"
+      [class.is-active]="selectedFilter() === 'info'"
+      [attr.aria-pressed]="selectedFilter() === 'info'"
+      (click)="selectFilter('info')"
+    >
+      <span class="filter-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.6" />
+          <path d="M12 11v5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="12" cy="8" r=".8" fill="currentColor" />
+        </svg>
+      </span>
+      <span class="filter-copy"
+        ><span>Información</span><strong>{{ counts().info }}</strong></span
+      >
+      <span class="filter-detail">Actividad general</span>
+    </button>
+  </div>
+
+  <section class="alerts-panel" aria-labelledby="filtered-alerts-title">
+    <header class="panel-heading">
+      <div>
+        <h2 id="filtered-alerts-title">{{ activeFilterLabel() }}</h2>
+        <p aria-live="polite">
+          {{ filteredAlerts().length }}
+          {{ filteredAlerts().length === 1 ? 'alerta encontrada' : 'alertas encontradas' }}
+        </p>
+      </div>
+      @if (selectedFilter() !== 'all') {
+        <button class="show-all" type="button" (click)="selectFilter('all')">Ver todas</button>
+      }
+    </header>
+
+    @if (filteredAlerts().length) {
+      <ul class="alert-list">
+        @for (alert of filteredAlerts(); track alert.id) {
+          <li class="alert-item" [class.is-unread]="!alert.read">
+            <span
+              class="severity-icon"
+              [class]="'severity-icon ' + alert.severity"
+              aria-hidden="true"
+            >
+              @switch (alert.severity) {
+                @case ('critical') {
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M12 4.5 20.5 19H3.5L12 4.5Z"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M12 10v4.2"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linecap="round"
+                    />
+                    <circle cx="12" cy="16.6" r=".8" fill="currentColor" />
+                  </svg>
+                }
+                @case ('warning') {
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7" />
+                    <path
+                      d="M12 8v5"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linecap="round"
+                    />
+                    <circle cx="12" cy="16" r=".8" fill="currentColor" />
+                  </svg>
+                }
+                @case ('info') {
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.7" />
+                    <path
+                      d="M12 11v5"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linecap="round"
+                    />
+                    <circle cx="12" cy="8" r=".8" fill="currentColor" />
+                  </svg>
+                }
+              }
+            </span>
+
+            <div class="alert-content">
+              <div class="alert-title-row">
+                <span class="severity-label" [class]="'severity-label ' + alert.severity">{{
+                  alert.category
+                }}</span>
+                @if (!alert.read) {
+                  <span class="unread-label"><span aria-hidden="true"></span>Sin leer</span>
+                }
+              </div>
+              <h3>{{ alert.title }}</h3>
+              <p>{{ alert.description }}</p>
+              <div class="alert-meta">
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="8.5" r="3" stroke="currentColor" stroke-width="1.6" />
+                    <path
+                      d="M6.5 19c.8-3.2 3-4.8 5.5-4.8s4.7 1.6 5.5 4.8"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                  </svg>
+                  {{ alert.person }}
+                </span>
+                <span>
+                  <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path
+                      d="M12 21s6.5-5.2 6.5-11a6.5 6.5 0 1 0-13 0c0 5.8 6.5 11 6.5 11Z"
+                      stroke="currentColor"
+                      stroke-width="1.6"
+                    />
+                    <circle cx="12" cy="10" r="2" stroke="currentColor" stroke-width="1.6" />
+                  </svg>
+                  {{ alert.location }}
+                </span>
+              </div>
+            </div>
+
+            <time [attr.datetime]="alert.dateTime">{{ alert.time }}</time>
+          </li>
+        }
+      </ul>
+    } @else {
+      <div class="empty-state">
+        <span aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path
+              d="m7.5 12.5 3 3 6-7"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5" />
+          </svg>
+        </span>
+        <h3>No hay alertas en esta categoría</h3>
+        <p>Cuando se registre una nueva alerta, aparecerá en esta sección.</p>
+      </div>
+    }
+  </section>
+</section>

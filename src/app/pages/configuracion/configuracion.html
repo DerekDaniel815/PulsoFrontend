@@ -1,0 +1,234 @@
+<section class="settings-page" aria-labelledby="settings-title">
+  <header class="page-heading">
+    <p class="eyebrow">Cuenta y dispositivo</p>
+    <h1 id="settings-title">Configuración</h1>
+    <p>Preferencias de privacidad y ubicación</p>
+  </header>
+
+  <section class="settings-card profile-card" aria-labelledby="profile-title">
+    <h2 id="profile-title">Perfil</h2>
+    <div class="profile-row">
+      <span class="profile-avatar" aria-hidden="true">JM</span>
+      <div class="profile-copy">
+        <strong>Javier Morales</strong>
+        <span>javier.morales&#64;email.com · +34 612 345 678</span>
+      </div>
+      <button class="secondary-button" type="button">Editar perfil</button>
+    </div>
+
+    <fieldset class="status-options">
+      <legend>Estado personal</legend>
+      <div role="radiogroup" aria-label="Estado personal">
+        <button
+          class="status-safe"
+          type="button"
+          role="radio"
+          [class.is-active]="personalStatus() === 'safe'"
+          [attr.aria-checked]="personalStatus() === 'safe'"
+          (click)="setPersonalStatus('safe')"
+        >
+          <span aria-hidden="true">✓</span>Seguro/a
+        </button>
+        <button
+          class="status-attention"
+          type="button"
+          role="radio"
+          [class.is-active]="personalStatus() === 'attention'"
+          [attr.aria-checked]="personalStatus() === 'attention'"
+          (click)="setPersonalStatus('attention')"
+        >
+          <span aria-hidden="true">▲</span>Necesita atención
+        </button>
+        <button
+          class="status-emergency"
+          type="button"
+          role="radio"
+          [class.is-active]="personalStatus() === 'emergency'"
+          [attr.aria-checked]="personalStatus() === 'emergency'"
+          (click)="setPersonalStatus('emergency')"
+        >
+          <span aria-hidden="true">!</span>Emergencia
+        </button>
+        <button
+          class="status-unknown"
+          type="button"
+          role="radio"
+          [class.is-active]="personalStatus() === 'unknown'"
+          [attr.aria-checked]="personalStatus() === 'unknown'"
+          (click)="setPersonalStatus('unknown')"
+        >
+          <span aria-hidden="true">?</span>Sin información
+        </button>
+      </div>
+    </fieldset>
+  </section>
+
+  <section class="settings-card" aria-labelledby="gps-title">
+    <h2 id="gps-title">GPS y localización</h2>
+    <div class="setting-row">
+      <div><strong>GPS activo</strong><span>Compartir tu ubicación en tiempo real</span></div>
+      <button
+        class="switch"
+        type="button"
+        role="switch"
+        [class.is-active]="gpsEnabled()"
+        [attr.aria-checked]="gpsEnabled()"
+        aria-label="Activar o desactivar GPS"
+        (click)="toggleGps()"
+      >
+        <span></span>
+      </button>
+    </div>
+
+    <fieldset class="segment-setting" [disabled]="!gpsEnabled()">
+      <legend>Precisión GPS</legend>
+      <div role="radiogroup" aria-label="Precisión GPS">
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="precision() === 'high'"
+          [attr.aria-checked]="precision() === 'high'"
+          (click)="setPrecision('high')"
+        >
+          Alta (±5 m)
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="precision() === 'balanced'"
+          [attr.aria-checked]="precision() === 'balanced'"
+          (click)="setPrecision('balanced')"
+        >
+          Equilibrado (±15 m)
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="precision() === 'battery'"
+          [attr.aria-checked]="precision() === 'battery'"
+          (click)="setPrecision('battery')"
+        >
+          Ahorro batería (±50 m)
+        </button>
+      </div>
+    </fieldset>
+
+    <fieldset class="segment-setting frequency" [disabled]="!gpsEnabled()">
+      <legend>Frecuencia de actualización</legend>
+      <div role="radiogroup" aria-label="Frecuencia de actualización">
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="frequency() === '10s'"
+          [attr.aria-checked]="frequency() === '10s'"
+          (click)="setFrequency('10s')"
+        >
+          10 seg
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="frequency() === '30s'"
+          [attr.aria-checked]="frequency() === '30s'"
+          (click)="setFrequency('30s')"
+        >
+          30 seg
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="frequency() === '1m'"
+          [attr.aria-checked]="frequency() === '1m'"
+          (click)="setFrequency('1m')"
+        >
+          1 min
+        </button>
+        <button
+          type="button"
+          role="radio"
+          [class.is-active]="frequency() === '5m'"
+          [attr.aria-checked]="frequency() === '5m'"
+          (click)="setFrequency('5m')"
+        >
+          5 min
+        </button>
+      </div>
+    </fieldset>
+  </section>
+
+  <section class="settings-card" aria-labelledby="privacy-title">
+    <h2 id="privacy-title">Privacidad y seguridad</h2>
+    <div class="setting-row">
+      <div><strong>Notificaciones</strong><span>Alertas y eventos importantes</span></div>
+      <button
+        class="switch"
+        type="button"
+        role="switch"
+        [class.is-active]="notificationsEnabled()"
+        [attr.aria-checked]="notificationsEnabled()"
+        aria-label="Activar o desactivar notificaciones"
+        (click)="toggleNotifications()"
+      >
+        <span></span>
+      </button>
+    </div>
+    <div class="setting-row">
+      <div>
+        <strong>Modo Emergencia Global</strong
+        ><span>Amplía la visibilidad para facilitar localización en catástrofes</span>
+      </div>
+      <button
+        class="switch"
+        type="button"
+        role="switch"
+        [class.is-active]="globalEmergencyEnabled()"
+        [attr.aria-checked]="globalEmergencyEnabled()"
+        aria-label="Activar o desactivar modo emergencia global"
+        (click)="toggleGlobalEmergency()"
+      >
+        <span></span>
+      </button>
+    </div>
+    <p class="warning-message">
+      <span aria-hidden="true">▲</span>El modo emergencia hace tu ubicación visible para facilitar
+      tu localización. Actívalo solo en situaciones de riesgo real.
+    </p>
+  </section>
+
+  <section class="settings-card danger-card" aria-labelledby="danger-title">
+    <h2 id="danger-title">Zona de peligro</h2>
+    <div class="danger-action warning-action">
+      <div>
+        <strong>Revocar todos los permisos de ubicación</strong
+        ><span>Elimina el acceso de todos los contactos a tu ubicación</span>
+      </div>
+      <button type="button" (click)="executeAction('Los permisos de ubicación fueron revocados.')">
+        Ejecutar
+      </button>
+    </div>
+    <div class="danger-action">
+      <div>
+        <strong>Eliminar historial de ubicaciones</strong
+        ><span>Borra permanentemente todos los registros históricos</span>
+      </div>
+      <button type="button" (click)="executeAction('El historial de ubicaciones fue eliminado.')">
+        Ejecutar
+      </button>
+    </div>
+    <div class="danger-action">
+      <div>
+        <strong>Cerrar sesión en todos los dispositivos</strong
+        ><span>Desconecta todas las sesiones activas</span>
+      </div>
+      <button
+        type="button"
+        (click)="executeAction('Se cerraron las sesiones de los demás dispositivos.')"
+      >
+        Ejecutar
+      </button>
+    </div>
+    @if (actionMessage()) {
+      <p class="action-feedback" role="status">{{ actionMessage() }}</p>
+    }
+  </section>
+</section>

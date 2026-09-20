@@ -1,0 +1,111 @@
+<section class="groups-page" aria-labelledby="groups-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Ubicación compartida</p>
+      <h1 id="groups-title">Grupos</h1>
+      <p class="intro">
+        {{ groupsWithAccess() }} con acceso a ubicación · {{ groups().length }} grupos en total
+      </p>
+    </div>
+    <button class="new-group" type="button">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 5v14M5 12h14"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        />
+      </svg>
+      Nuevo grupo
+    </button>
+  </header>
+
+  <div class="group-grid">
+    @for (group of groups(); track group.id) {
+      <article class="group-card" [class]="'group-card tone-' + group.tone">
+        <div class="group-head">
+          <span class="group-icon" aria-hidden="true">{{ group.icon }}</span>
+          <div class="group-name">
+            <h2>{{ group.name }}</h2>
+            <p>
+              {{ group.members.length }} {{ group.members.length === 1 ? 'miembro' : 'miembros' }}
+            </p>
+          </div>
+          <div class="group-state">
+            <span [class.is-active]="group.active">{{ group.active ? 'Activo' : 'Inactivo' }}</span>
+            <button
+              class="switch"
+              type="button"
+              role="switch"
+              [class.is-active]="group.active"
+              [attr.aria-checked]="group.active"
+              [attr.aria-label]="(group.active ? 'Desactivar ' : 'Activar ') + group.name"
+              (click)="toggleGroup(group.id)"
+            >
+              <span></span>
+            </button>
+          </div>
+        </div>
+
+        <p class="description">
+          {{ group.description }}<span aria-hidden="true">·</span>{{ group.accessLabel }}
+        </p>
+
+        <div class="members">
+          <div class="avatar-stack" [attr.aria-label]="'Miembros de ' + group.name">
+            @for (member of group.members; track member.name) {
+              <span
+                class="member-avatar"
+                [class.is-offline]="!member.online"
+                [style.background]="member.color"
+                [attr.title]="member.name"
+              >
+                {{ member.initials }}
+              </span>
+            }
+          </div>
+          <span>{{ onlineMembers(group) }}/{{ group.members.length }} en línea</span>
+        </div>
+      </article>
+    }
+  </div>
+
+  <section class="permissions" aria-labelledby="permissions-title">
+    <h2 id="permissions-title">Resumen de permisos de ubicación</h2>
+    <ul>
+      @for (group of groups(); track group.id) {
+        <li>
+          <span
+            class="permission-icon"
+            [class]="'permission-icon tone-' + group.tone"
+            aria-hidden="true"
+          >
+            {{ group.icon }}
+          </span>
+          <strong>{{ group.name }}</strong>
+          <span class="permission-state" [class.has-access]="group.active">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              @if (group.active) {
+                <path
+                  d="m6 12.5 4 4L18 8"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              } @else {
+                <path
+                  d="m8 8 8 8m0-8-8 8"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+              }
+            </svg>
+            {{ group.active ? 'Acceso' : 'Sin acceso' }}
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
+</section>

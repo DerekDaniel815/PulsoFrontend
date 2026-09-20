@@ -1,17 +1,29 @@
-import { Component } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
+import { SAFE_ZONES } from './zonas-seguras.data';
 
 @Component({
   selector: 'app-zonas-seguras',
-  template: `
-    <section class="page">
-      <div class="page-head">
-        <h1>Zonas seguras</h1>
-        <p>Geocercas previstas para una siguiente iteración. Aún no existe en el backend.</p>
-      </div>
-      <article class="card empty-card">
-        Vista reservada para delimitar zonas y alertas de entrada/salida.
-      </article>
-    </section>
-  `,
+  templateUrl: './zonas-seguras.html',
+  styleUrl: './zonas-seguras.scss',
 })
-export class ZonasSeguras {}
+export class ZonasSeguras {
+  protected readonly zones = signal(SAFE_ZONES);
+  protected readonly selectedZoneId = signal(SAFE_ZONES[0].id);
+  protected readonly activeZones = computed(() => this.zones().filter((zone) => zone.active));
+  protected readonly nearbyContacts = computed(() =>
+    this.zones().reduce((total, zone) => total + zone.nearbyContacts, 0),
+  );
+  protected readonly selectedZone = computed(
+    () => this.zones().find((zone) => zone.id === this.selectedZoneId()) ?? this.zones()[0],
+  );
+
+  protected selectZone(zoneId: number): void {
+    this.selectedZoneId.set(zoneId);
+  }
+
+  protected toggleZone(zoneId: number): void {
+    this.zones.update((zones) =>
+      zones.map((zone) => (zone.id === zoneId ? { ...zone, active: !zone.active } : zone)),
+    );
+  }
+}
