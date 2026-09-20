@@ -1,0 +1,107 @@
+<section class="zones-page" aria-labelledby="zones-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Geocercas</p>
+      <h1 id="zones-title">Zonas seguras</h1>
+      <p class="intro">
+        {{ activeZones().length }} zonas activas · {{ nearbyContacts() }} contactos cercanos
+      </p>
+    </div>
+    <button class="new-zone" type="button">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M12 5v14M5 12h14"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+        />
+      </svg>
+      Nueva zona
+    </button>
+  </header>
+
+  <div class="zones-layout">
+    <div class="zone-list" aria-label="Zonas configuradas">
+      @for (zone of zones(); track zone.id) {
+        <article
+          class="zone-card"
+          [class.is-selected]="selectedZoneId() === zone.id"
+          [class]="'zone-card tone-' + zone.tone"
+        >
+          <button
+            class="zone-select"
+            type="button"
+            [attr.aria-label]="'Ver detalles de ' + zone.name"
+            (click)="selectZone(zone.id)"
+          >
+            <span class="zone-icon" aria-hidden="true">{{ zone.icon }}</span>
+            <span class="zone-copy"
+              ><strong>{{ zone.name }}</strong
+              ><small>{{ zone.address }}</small></span
+            >
+          </button>
+          <button
+            class="switch"
+            type="button"
+            role="switch"
+            [class.is-active]="zone.active"
+            [attr.aria-checked]="zone.active"
+            [attr.aria-label]="(zone.active ? 'Desactivar ' : 'Activar ') + zone.name"
+            (click)="toggleZone(zone.id)"
+          >
+            <span></span>
+          </button>
+          <p>Radio: {{ zone.radius }} m</p>
+          @if (zone.nearbyContacts) {
+            <span class="nearby"
+              ><span aria-hidden="true">●</span>{{ zone.nearbyContacts }}
+              {{ zone.nearbyContacts === 1 ? 'cercano' : 'cercanos' }}</span
+            >
+          }
+        </article>
+      }
+    </div>
+
+    <div class="map-column">
+      <figure class="zones-map">
+        <figcaption>{{ activeZones().length }} zonas visibles</figcaption>
+        <div class="current-location" aria-label="Tu ubicación actual"><span></span></div>
+        @for (zone of activeZones(); track zone.id) {
+          <button
+            class="map-zone"
+            [class]="'map-zone tone-' + zone.tone"
+            type="button"
+            [class.is-selected]="selectedZoneId() === zone.id"
+            [style.left.%]="zone.mapX"
+            [style.top.%]="zone.mapY"
+            [style.width.%]="zone.mapSize"
+            [attr.aria-label]="'Seleccionar zona ' + zone.name"
+            (click)="selectZone(zone.id)"
+          >
+            <span>{{ zone.name }}</span>
+          </button>
+        }
+      </figure>
+
+      <section class="zone-details" aria-labelledby="zone-details-title">
+        <h2 id="zone-details-title">
+          <span aria-hidden="true">{{ selectedZone().icon }}</span
+          >{{ selectedZone().name }} — Detalles
+        </h2>
+        <div>
+          <article>
+            <strong>{{ selectedZone().radius }} m</strong><span>Radio de cobertura</span>
+          </article>
+          <article>
+            <strong>{{ selectedZone().nearbyContacts }}</strong
+            ><span>Contactos cercanos</span>
+          </article>
+          <article>
+            <strong>{{ selectedZone().active ? 'Activa' : 'Inactiva' }}</strong
+            ><span>Estado</span>
+          </article>
+        </div>
+      </section>
+    </div>
+  </div>
+</section>
