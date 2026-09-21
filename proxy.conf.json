@@ -1,0 +1,11 @@
+{
+  "/pulso-api": {
+    "target": "https://pulso-backend-demo.onrender.com",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/pulso-api": ""
+    },
+    "logLevel": "warn"
+  }
+}

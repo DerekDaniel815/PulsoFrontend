@@ -1,7 +1,7 @@
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { GoogleMap, MapMarker } from '@angular/google-maps';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
-import { DARK_MAP_STYLES, MAP_CENTER, MAP_POINTS, markerOptions } from '../../core/maps/map-theme';
+import { DARK_MAP_STYLES, MAP_CENTER, MAP_POINTS, MapPoint, markerOptions } from '../../core/maps/map-theme';
 
 interface ReadyMarker {
   id: string;
@@ -20,10 +20,13 @@ export class LiveMap {
   private readonly loader = inject(GoogleMapsLoader);
 
   readonly overlayLayout = input(false);
+  readonly showDemoMarkers = input(false);
 
   protected readonly ready = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly center = MAP_CENTER;
+  protected readonly locationMessage = signal<string | null>(null);
+  protected readonly locating = signal(true);
+  protected readonly center = signal(MAP_CENTER);
   protected readonly zoom = 15;
   protected readonly options = signal<google.maps.MapOptions>({});
   protected readonly markers = signal<ReadyMarker[]>([]);
@@ -44,6 +47,12 @@ export class LiveMap {
         },
       }));
     });
+    effect(() => {
+      this.showDemoMarkers();
+      if (this.ready()) {
+        this.updateMarkers();
+      }
+    });
   }
 
   private async init(): Promise<void> {
@@ -63,19 +72,76 @@ export class LiveMap {
         backgroundColor: '#10151f',
         styles: DARK_MAP_STYLES,
       });
-      this.markers.set(
-        MAP_POINTS.map((point) => ({
-          id: point.id,
-          title: point.title,
-          position: point.position,
-          options: markerOptions(point),
-        })),
-      );
       this.ready.set(true);
+      this.requestLocation();
     } catch {
       this.error.set(
         'No se pudo cargar Google Maps. Copia public/maps-config.example.json a public/maps-config.json y pega tu API key.',
       );
     }
+  }
+
+  protected requestLocation(): void {
+    const geolocation = globalThis.navigator?.geolocation;
+    if (!geolocation) {
+      this.locating.set(false);
+      this.locationMessage.set('La geolocalización no está disponible en este navegador.');
+      this.updateMarkers();
+      return;
+    }
+
+    this.locating.set(true);
+    this.locationMessage.set(null);
+    geolocation.getCurrentPosition(
+      ({ coords }) => {
+        this.center.set({ lat: coords.latitude, lng: coords.longitude });
+        this.locating.set(false);
+        this.locationMessage.set(null);
+        this.updateMarkers(this.center());
+      },
+      () => {
+        this.locating.set(false);
+        this.locationMessage.set('No pudimos acceder a tu ubicación. Puedes habilitar el permiso y reintentar.');
+        this.updateMarkers();
+      },
+      { enableHighAccuracy: true, maximumAge: 30_000, timeout: 12_000 },
+    );
+  }
+
+  private updateMarkers(currentPosition?: google.maps.LatLngLiteral): void {
+    if (!globalThis.google?.maps) {
+      return;
+    }
+
+    const points: MapPoint[] = this.showDemoMarkers()
+      ? MAP_POINTS.filter((point) => point.id !== 'tu')
+      : [];
+
+    if (currentPosition) {
+      points.unshift({
+        id: 'tu',
+        title: 'Tu ubicación actual',
+        initials: 'TÚ',
+        status: 'yo',
+        position: currentPosition,
+      });
+    } else if (this.center() !== MAP_CENTER) {
+      points.unshift({
+        id: 'tu',
+        title: 'Tu ubicación actual',
+        initials: 'TÚ',
+        status: 'yo',
+        position: this.center(),
+      });
+    }
+
+    this.markers.set(
+      points.map((point) => ({
+        id: point.id,
+        title: point.title,
+        position: point.position,
+        options: markerOptions(point),
+      })),
+    );
   }
 }

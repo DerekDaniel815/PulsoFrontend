@@ -1,0 +1,249 @@
+:host {
+  position: relative;
+  z-index: 100;
+}
+
+.auth-dialog {
+  width: min(470px, calc(100vw - 32px));
+  max-height: min(780px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 28px;
+  overflow: auto;
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 94%, black);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+}
+
+.auth-dialog::backdrop {
+  background: rgba(5, 8, 13, 0.56);
+  backdrop-filter: blur(12px);
+}
+
+.close-button {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.close-button:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.close-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.dialog-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 34px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  flex: 0 0 44px;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: 14px;
+}
+
+.brand-mark svg {
+  width: 24px;
+  height: 24px;
+}
+
+.dialog-heading p,
+.dialog-heading h2,
+.description,
+.field-error,
+.field-hint,
+.server-error {
+  margin: 0;
+}
+
+.dialog-heading p {
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+}
+
+.dialog-heading h2 {
+  font-size: 1.45rem;
+  letter-spacing: -0.025em;
+}
+
+.description {
+  margin-top: 14px;
+  color: var(--text-muted);
+}
+
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin: 22px 0 18px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.auth-tabs button {
+  min-height: 38px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.auth-tabs button.is-active {
+  color: var(--text);
+  background: var(--surface-hover);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22);
+}
+
+form,
+.field {
+  display: grid;
+  gap: 7px;
+}
+
+form {
+  gap: 15px;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+label {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+label span,
+.field-hint {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  outline: none;
+}
+
+input::placeholder {
+  color: var(--text-dim);
+}
+
+input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--emergency);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 72px;
+}
+
+.password-field button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  min-height: 30px;
+  padding: 0 6px;
+  transform: translateY(-50%);
+  color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.field-error {
+  color: #ff8b8b;
+  font-size: 11px;
+}
+
+.field-hint {
+  font-size: 11px;
+}
+
+.server-error {
+  padding: 10px 12px;
+  color: #ffb0b0;
+  background: var(--emergency-soft);
+  border: 1px solid rgba(255, 77, 77, 0.28);
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.submit-button {
+  min-height: 44px;
+  color: var(--bg);
+  background: var(--primary);
+  border: 0;
+  border-radius: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.submit-button:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+@media (max-width: 560px) {
+  .auth-dialog {
+    padding: 24px 18px;
+  }
+
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+}

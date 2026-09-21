@@ -5,7 +5,7 @@
     "ng": "ng",
     "maps:config": "node scripts/generate-maps-config.mjs",
     "prestart": "npm run maps:config",
-    "start": "ng serve",
+    "start": "ng serve --proxy-config proxy.conf.json",
     "prebuild": "npm run maps:config",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",

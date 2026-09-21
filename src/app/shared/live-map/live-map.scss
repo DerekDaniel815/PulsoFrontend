@@ -1,7 +1,51 @@
 :host {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.location-notice {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 2;
+  margin: 0;
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  color: var(--text);
+  background: rgba(11, 14, 20, 0.78);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.location-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(520px, calc(100% - 24px));
+}
+
+.location-warning p {
+  margin: 0;
+  flex: 1;
+}
+
+.location-warning button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid rgba(0, 209, 255, 0.32);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.location-warning button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 google-map {
