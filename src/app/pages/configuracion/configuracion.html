@@ -8,10 +8,15 @@
   <section class="settings-card profile-card" aria-labelledby="profile-title">
     <h2 id="profile-title">Perfil</h2>
     <div class="profile-row">
-      <span class="profile-avatar" aria-hidden="true">JM</span>
+      <span class="profile-avatar" aria-hidden="true">{{ profileInitials() }}</span>
       <div class="profile-copy">
-        <strong>Javier Morales</strong>
-        <span>javier.morales&#64;email.com · +34 612 345 678</span>
+        <strong>{{ profileName() }}</strong>
+        <span>
+          {{ session.user()?.correo }}
+          @if (session.user()?.telefono) {
+            · {{ session.user()?.telefono }}
+          }
+        </span>
       </div>
       <button class="secondary-button" type="button">Editar perfil</button>
     </div>

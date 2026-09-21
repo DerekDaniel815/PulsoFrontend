@@ -1,0 +1,237 @@
+<dialog
+  #dialog
+  class="auth-dialog"
+  aria-modal="true"
+  aria-labelledby="auth-title"
+  aria-describedby="auth-description"
+  (cancel)="close($event)"
+>
+  <button
+    class="close-button"
+    type="button"
+    aria-label="Cerrar"
+    [disabled]="busy()"
+    (click)="close()"
+  >
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="m7 7 10 10M17 7 7 17"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+      />
+    </svg>
+  </button>
+
+  <header class="dialog-heading">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path
+          d="M12 21s7-5.4 7-11.2A7 7 0 0 0 5 9.8C5 15.6 12 21 12 21Z"
+          stroke="currentColor"
+          stroke-width="1.7"
+        />
+        <circle cx="12" cy="10" r="2.2" fill="currentColor" />
+      </svg>
+    </span>
+    <div>
+      <p>PULSO</p>
+      <h2 id="auth-title">
+        {{ dialogState.mode() === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta' }}
+      </h2>
+    </div>
+  </header>
+  <p id="auth-description" class="description">
+    {{
+      dialogState.mode() === 'login'
+        ? 'Inicia sesión para acceder a tus contactos, alertas y configuración.'
+        : 'Regístrate para comenzar a utilizar las funciones personales de Pulso.'
+    }}
+  </p>
+
+  <div class="auth-tabs" role="group" aria-label="Opciones de autenticación">
+    <button
+      id="login-tab"
+      type="button"
+      [attr.aria-pressed]="dialogState.mode() === 'login'"
+      [class.is-active]="dialogState.mode() === 'login'"
+      [disabled]="busy()"
+      (click)="selectMode('login')"
+    >
+      Iniciar sesión
+    </button>
+    <button
+      id="register-tab"
+      type="button"
+      [attr.aria-pressed]="dialogState.mode() === 'register'"
+      [class.is-active]="dialogState.mode() === 'register'"
+      [disabled]="busy()"
+      (click)="selectMode('register')"
+    >
+      Crear cuenta
+    </button>
+  </div>
+
+  @if (dialogState.mode() === 'login') {
+    <form id="login-panel" (submit)="submitLogin($event)">
+      <div class="field">
+        <label for="login-email">Correo electrónico</label>
+        <input
+          id="login-email"
+          type="email"
+          autocomplete="email"
+          placeholder="nombre@correo.com"
+          [formField]="loginForm.correo"
+          [attr.aria-describedby]="loginForm.correo().invalid() ? 'login-email-error' : null"
+        />
+        @if (loginForm.correo().touched() && loginForm.correo().invalid()) {
+          <p id="login-email-error" class="field-error">
+            {{ loginForm.correo().errors()[0].message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="login-password">Contraseña</label>
+        <div class="password-field">
+          <input
+            id="login-password"
+            [type]="showLoginPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            placeholder="Tu contraseña"
+            [formField]="loginForm.password"
+            [attr.aria-describedby]="loginForm.password().invalid() ? 'login-password-error' : null"
+          />
+          <button
+            type="button"
+            [attr.aria-label]="showLoginPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            [attr.aria-pressed]="showLoginPassword()"
+            (click)="toggleLoginPassword()"
+          >
+            {{ showLoginPassword() ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+        @if (loginForm.password().touched() && loginForm.password().invalid()) {
+          <p id="login-password-error" class="field-error">
+            {{ loginForm.password().errors()[0].message }}
+          </p>
+        }
+      </div>
+
+      @if (serverError()) {
+        <p class="server-error" role="alert">{{ serverError() }}</p>
+      }
+
+      <button class="submit-button" type="submit" [disabled]="busy()">
+        {{ busy() ? 'Iniciando sesión…' : 'Iniciar sesión' }}
+      </button>
+    </form>
+  } @else {
+    <form id="register-panel" (submit)="submitRegister($event)">
+      <div class="field-grid">
+        <div class="field">
+          <label for="register-names">Nombres</label>
+          <input
+            id="register-names"
+            autocomplete="given-name"
+            [formField]="registerForm.nombres"
+            [attr.aria-describedby]="
+              registerForm.nombres().invalid() ? 'register-names-error' : null
+            "
+          />
+          @if (registerForm.nombres().touched() && registerForm.nombres().invalid()) {
+            <p id="register-names-error" class="field-error">
+              {{ registerForm.nombres().errors()[0].message }}
+            </p>
+          }
+        </div>
+        <div class="field">
+          <label for="register-surnames">Apellidos</label>
+          <input
+            id="register-surnames"
+            autocomplete="family-name"
+            [formField]="registerForm.apellidos"
+            [attr.aria-describedby]="
+              registerForm.apellidos().invalid() ? 'register-surnames-error' : null
+            "
+          />
+          @if (registerForm.apellidos().touched() && registerForm.apellidos().invalid()) {
+            <p id="register-surnames-error" class="field-error">
+              {{ registerForm.apellidos().errors()[0].message }}
+            </p>
+          }
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="register-email">Correo electrónico</label>
+        <input
+          id="register-email"
+          type="email"
+          autocomplete="email"
+          [formField]="registerForm.correo"
+          [attr.aria-describedby]="registerForm.correo().invalid() ? 'register-email-error' : null"
+        />
+        @if (registerForm.correo().touched() && registerForm.correo().invalid()) {
+          <p id="register-email-error" class="field-error">
+            {{ registerForm.correo().errors()[0].message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-phone">Teléfono <span>(opcional)</span></label>
+        <input
+          id="register-phone"
+          type="tel"
+          autocomplete="tel"
+          [formField]="registerForm.telefono"
+          [attr.aria-describedby]="
+            registerForm.telefono().invalid() ? 'register-phone-error' : null
+          "
+        />
+        @if (registerForm.telefono().touched() && registerForm.telefono().invalid()) {
+          <p id="register-phone-error" class="field-error">
+            {{ registerForm.telefono().errors()[0].message }}
+          </p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="register-password">Contraseña</label>
+        <div class="password-field">
+          <input
+            id="register-password"
+            [type]="showRegisterPassword() ? 'text' : 'password'"
+            autocomplete="new-password"
+            [formField]="registerForm.password"
+            aria-describedby="register-password-help"
+          />
+          <button
+            type="button"
+            [attr.aria-label]="showRegisterPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            [attr.aria-pressed]="showRegisterPassword()"
+            (click)="toggleRegisterPassword()"
+          >
+            {{ showRegisterPassword() ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+        @if (registerForm.password().touched() && registerForm.password().invalid()) {
+          <p id="register-password-help" class="field-error">
+            {{ registerForm.password().errors()[0].message }}
+          </p>
+        } @else {
+          <p id="register-password-help" class="field-hint">Mínimo 8 caracteres.</p>
+        }
+      </div>
+
+      @if (serverError()) {
+        <p class="server-error" role="alert">{{ serverError() }}</p>
+      }
+
+      <button class="submit-button" type="submit" [disabled]="busy()">
+        {{ busy() ? 'Creando cuenta…' : 'Crear cuenta' }}
+      </button>
+    </form>
+  }
+</dialog>

@@ -1,5 +1,6 @@
 import { Component, DestroyRef, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { SessionStore } from '../../core/auth/session-store';
 import { LayoutMode } from '../../layout/layout-mode';
 import { LiveMap } from '../../shared/live-map/live-map';
 import { DASHBOARD_ACTIVITY, DASHBOARD_CONTACTS } from './dashboard.data';
@@ -13,6 +14,7 @@ import { DASHBOARD_ACTIVITY, DASHBOARD_CONTACTS } from './dashboard.data';
 export class Dashboard {
   private readonly destroyRef = inject(DestroyRef);
   private readonly layout = inject(LayoutMode);
+  protected readonly isAuthenticated = inject(SessionStore).isAuthenticated;
 
   protected readonly contacts = DASHBOARD_CONTACTS;
   protected readonly activity = DASHBOARD_ACTIVITY;

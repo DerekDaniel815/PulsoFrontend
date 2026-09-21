@@ -1,9 +1,17 @@
 @if (ready()) {
-  <google-map height="100%" width="100%" [center]="center" [zoom]="zoom" [options]="options()">
+  <google-map height="100%" width="100%" [center]="center()" [zoom]="zoom" [options]="options()">
     @for (marker of markers(); track marker.id) {
       <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options" />
     }
   </google-map>
+  @if (locating()) {
+    <p class="location-notice" role="status">Obteniendo tu ubicación…</p>
+  } @else if (locationMessage()) {
+    <div class="location-notice location-warning" role="status">
+      <p>{{ locationMessage() }}</p>
+      <button type="button" (click)="requestLocation()">Reintentar</button>
+    </div>
+  }
 } @else if (error()) {
   <p class="map-error">{{ error() }}</p>
 } @else {
