@@ -54,6 +54,22 @@ google-map {
   height: 100%;
 }
 
+@media (max-width: 960px) {
+  .location-notice {
+    top: 10px;
+    width: calc(100% - 20px);
+    font-size: 12px;
+  }
+
+  .location-warning {
+    align-items: flex-start;
+  }
+
+  .location-warning button {
+    flex: 0 0 auto;
+  }
+}
+
 .map-error {
   margin: 0;
   height: 100%;

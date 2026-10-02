@@ -100,6 +100,7 @@
             }
           </span>
           <span class="nav-label">{{ item.label }}</span>
+          <span class="nav-short">{{ item.shortLabel ?? item.label }}</span>
           @if (item.badge) {
             <span class="badge">{{ item.badge }}</span>
           }
@@ -140,7 +141,24 @@
             </svg>
             <span class="badge bell">3</span>
           </button>
-          <button class="btn btn-ghost" type="button" (click)="logout()">Cerrar sesión</button>
+          <button class="btn btn-ghost logout-btn" type="button" aria-label="Cerrar sesión" (click)="logout()">
+            <svg class="logout-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M10 7V5.5A1.5 1.5 0 0 1 11.5 4h7A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 10 18.5V17"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+              <path
+                d="M4 12h10m0 0-3-3m3 3-3 3"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="logout-label">Cerrar sesión</span>
+          </button>
         } @else {
           <button class="btn" type="button" (click)="openAuthentication()">Iniciar sesión</button>
         }

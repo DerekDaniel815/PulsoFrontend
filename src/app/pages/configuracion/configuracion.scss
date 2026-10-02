@@ -5,6 +5,7 @@
   display: grid;
   gap: 18px;
   width: min(100%, 980px);
+  min-width: 0;
   margin: 0 auto;
   padding-bottom: 8px;
 }
@@ -264,6 +265,14 @@ button:focus-visible {
   .profile-row {
     align-items: flex-start;
     flex-wrap: wrap;
+  }
+
+  .profile-copy {
+    flex: 1 1 160px;
+  }
+
+  .profile-copy span {
+    overflow-wrap: anywhere;
   }
   .secondary-button {
     width: 100%;

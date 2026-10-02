@@ -6,6 +6,7 @@
   display: grid;
   gap: 22px;
   width: 100%;
+  min-width: 0;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -324,12 +325,14 @@ h1 {
 
 @media (max-width: 420px) {
   .group-head {
-    align-items: flex-start;
-    flex-wrap: wrap;
+    align-items: center;
   }
 
   .group-state {
-    width: 100%;
-    margin: 8px 0 0 58px;
+    margin-left: auto;
+  }
+
+  .group-name h2 {
+    white-space: normal;
   }
 }

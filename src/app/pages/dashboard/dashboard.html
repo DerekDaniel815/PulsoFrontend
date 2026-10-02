@@ -39,10 +39,9 @@
   <section class="stage">
     <div class="map">
       <app-live-map [overlayLayout]="mapExpanded()" [showDemoMarkers]="isAuthenticated()" />
-    </div>
 
-    @if (isAuthenticated()) {
-      <aside class="alert-toast" role="status">
+      @if (isAuthenticated()) {
+        <aside class="alert-toast" role="status">
         <span class="alert-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">
             <path
@@ -60,11 +59,11 @@
           <strong>Carlos Rodríguez</strong>
           <span>Av. Castellana 180, Madrid · Hace 3 min</span>
         </div>
-        <a class="alert-link" routerLink="/alertas">Ver</a>
-      </aside>
-    }
+          <a class="alert-link" routerLink="/alertas">Ver</a>
+        </aside>
+      }
 
-    <div class="map-foot">
+      <div class="map-foot">
       @if (isAuthenticated()) {
         <ul class="legend">
           <li><span class="dot"></span> Conectado</li>
@@ -105,6 +104,7 @@
           </svg>
         }
       </button>
+      </div>
     </div>
 
     @if (isAuthenticated()) {

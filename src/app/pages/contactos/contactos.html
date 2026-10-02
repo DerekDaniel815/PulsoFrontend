@@ -127,14 +127,14 @@
               ><small>{{ contact.address }}</small>
             </div>
           </div>
-          <div role="cell">
+          <div role="cell" data-label="Grupo">
             <span
               class="group-tag"
               [class]="'group-tag group-' + contact.group.toLocaleLowerCase()"
               >{{ contact.group }}</span
             >
           </div>
-          <div role="cell">
+          <div role="cell" data-label="Estado">
             <span class="contact-status" [class]="'contact-status status-' + contact.status"
               ><span aria-hidden="true"></span>{{ statusLabels[contact.status] }}</span
             >

@@ -5,6 +5,7 @@
   display: grid;
   gap: 18px;
   width: 100%;
+  min-width: 0;
   max-width: 1480px;
   margin: 0 auto;
 }
@@ -378,6 +379,14 @@ select:focus-visible {
   .search-box {
     flex-basis: 100%;
   }
+  .toolbar,
+  .page-heading,
+  .group-filters,
+  .contacts-table {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .group-filters {
     width: 100%;
     overflow-x: auto;
@@ -395,5 +404,56 @@ select:focus-visible {
   }
   .is-grid .table-body {
     grid-template-columns: 1fr;
+  }
+
+  .contacts-table:not(.is-grid) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .contacts-table:not(.is-grid) .table-head {
+    display: none;
+  }
+
+  .contacts-table:not(.is-grid) .table-body {
+    display: grid;
+    gap: 10px;
+  }
+
+  .contacts-table:not(.is-grid) .contact-row {
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
+  }
+
+  .contacts-table:not(.is-grid) .contact-identity,
+  .contacts-table:not(.is-grid) .actions {
+    grid-column: 1 / -1;
+  }
+
+  .contacts-table:not(.is-grid) .actions {
+    display: flex;
+  }
+
+  .contacts-table:not(.is-grid) .actions a,
+  .contacts-table:not(.is-grid) .actions button {
+    flex: 1;
+  }
+
+  .contacts-table:not(.is-grid) .contact-row > [role='cell']:not(.contact-identity):not(.actions)::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 4px;
+    color: var(--text-dim);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 }

@@ -5,6 +5,7 @@
   display: grid;
   gap: 20px;
   width: 100%;
+  min-width: 0;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -314,6 +315,11 @@ button:focus-visible {
   .page-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .zone-details h2 {
+    flex-wrap: wrap;
+    line-height: 1.3;
   }
   .new-zone {
     width: 100%;
