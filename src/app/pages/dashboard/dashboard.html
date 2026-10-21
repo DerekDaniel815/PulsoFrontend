@@ -49,7 +49,6 @@
 
   <section class="stage" [class.has-panels]="isAuthenticated()">
     <div class="map">
-<<<<<<< HEAD
       <app-live-map [overlayLayout]="mapExpanded()" />
       <div class="map-overlay"><span aria-hidden="true">●</span> Vista ciudad · Tiempo real</div>
       <div class="map-foot">
@@ -63,43 +62,6 @@
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
         </a>
         <button
-=======
-      <app-live-map [overlayLayout]="mapExpanded()" [showDemoMarkers]="isAuthenticated()" />
-
-      @if (isAuthenticated()) {
-        <aside class="alert-toast" role="status">
-        <span class="alert-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path
-              d="M12 4.5 20.5 19H3.5L12 4.5Z"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linejoin="round"
-            />
-            <path d="M12 10v4.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-            <circle cx="12" cy="16.6" r=".8" fill="currentColor" />
-          </svg>
-        </span>
-        <div class="alert-body">
-          <p class="alert-kicker">Emergencia activa</p>
-          <strong>Carlos Rodríguez</strong>
-          <span>Av. Castellana 180, Madrid · Hace 3 min</span>
-        </div>
-          <a class="alert-link" routerLink="/alertas">Ver</a>
-        </aside>
-      }
-
-      <div class="map-foot">
-      @if (isAuthenticated()) {
-        <ul class="legend">
-          <li><span class="dot"></span> Conectado</li>
-          <li><span class="dot away"></span> Ausente</li>
-          <li><span class="dot off"></span> Sin conexión</li>
-          <li><span class="dot danger"></span> Emergencia</li>
-        </ul>
-      }
-      <button
->>>>>>> origin/main
         class="expand-map"
         type="button"
         (click)="toggleMapExpand()"
@@ -130,11 +92,7 @@
             />
           </svg>
         }
-<<<<<<< HEAD
         </button>
-=======
-      </button>
->>>>>>> origin/main
       </div>
     </div>
 

@@ -120,8 +120,8 @@
             }
           </span>
           <span class="nav-label">{{ item.label }}</span>
-          @if (item.badge) {
-            <span class="badge">{{ item.badge }}</span>
+          @if (item.icon === 'alerts' && overview.unreadCount()) {
+            <span class="badge">{{ overview.unreadCount() }}</span>
           }
         </a>
       }

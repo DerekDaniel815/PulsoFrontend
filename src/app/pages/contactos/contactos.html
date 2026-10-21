@@ -20,7 +20,6 @@
     </label>
   </div>
 
-<<<<<<< HEAD
   @if (searchTerm().trim().length >= 2) {
     <section class="contact-panel" aria-label="Resultados de búsqueda">
       <h2>Personas</h2>
@@ -28,71 +27,6 @@
         <div class="request-row"><span><strong>{{ name(user) }}</strong><small>{{ user.correo }}</small></span>
           @if (isKnown(user)) { <span class="request-note">Contacto o solicitud existente</span> }
           @else { <button type="button" [disabled]="busy()" (click)="send(user)">Enviar solicitud</button> }
-=======
-  <div
-    class="contacts-table"
-    [class.is-grid]="viewMode() === 'grid'"
-    role="table"
-    aria-label="Listado de contactos"
-  >
-    <div class="table-head" role="row">
-      <span role="columnheader">Contacto</span>
-      <span role="columnheader">Grupo</span>
-      <span role="columnheader">Estado</span>
-      <span role="columnheader">Última conexión</span>
-      <span role="columnheader">Distancia</span>
-      <span role="columnheader">Ubicación</span>
-      <span role="columnheader">Acciones</span>
-    </div>
-
-    <div class="table-body" role="rowgroup">
-      @for (contact of filteredContacts(); track contact.id) {
-        <article class="contact-row" role="row">
-          <div class="contact-identity" role="cell">
-            <span class="avatar" [style.background]="contact.avatarColor">{{
-              contact.initials
-            }}</span>
-            <div>
-              <strong>{{ contact.name }}</strong
-              ><small>{{ contact.address }}</small>
-            </div>
-          </div>
-          <div role="cell" data-label="Grupo">
-            <span
-              class="group-tag"
-              [class]="'group-tag group-' + contact.group.toLocaleLowerCase()"
-              >{{ contact.group }}</span
-            >
-          </div>
-          <div role="cell" data-label="Estado">
-            <span class="contact-status" [class]="'contact-status status-' + contact.status"
-              ><span aria-hidden="true"></span>{{ statusLabels[contact.status] }}</span
-            >
-          </div>
-          <div class="secondary" role="cell" data-label="Última conexión">
-            {{ contact.lastConnection }}
-          </div>
-          <div class="secondary" role="cell" data-label="Distancia">{{ contact.distance }}</div>
-          <div role="cell" data-label="Ubicación">
-            <span class="location-state" [class.is-inactive]="!contact.locationActive"
-              ><span aria-hidden="true"></span
-              >{{ contact.locationActive ? 'Activa' : 'Inactiva' }}</span
-            >
-          </div>
-          <div class="actions" role="cell">
-            <a routerLink="/dashboard">Ver mapa</a>
-            <button type="button">Permisos</button>
-          </div>
-        </article>
-      } @empty {
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="10.5" cy="10.5" r="5.5" stroke="currentColor" stroke-width="1.6" />
-            <path d="m15 15 4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
-          <strong>No encontramos contactos</strong>
-          <p>Prueba con otro nombre, grupo o estado.</p>
->>>>>>> origin/main
         </div>
       } @empty { <p class="empty-state">No hay resultados para esta búsqueda.</p> }
     </section>
