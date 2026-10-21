@@ -4,6 +4,11 @@
       <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options" />
     }
   </google-map>
+  @if (locations.error()) {
+    <div class="location-notice location-warning" role="alert">
+      {{ locations.error() }} <button type="button" (click)="locations.refresh()">Reintentar</button>
+    </div>
+  }
   @if (locating()) {
     <p class="location-notice" role="status">Obteniendo tu ubicación…</p>
   } @else if (locationMessage()) {

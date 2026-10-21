@@ -2,7 +2,9 @@
   class="shell"
   [class.is-map-expanded]="layout.mapExpanded()"
   [class.is-overlay-nav-collapsed]="layout.mapExpanded() && !layout.overlayNavOpen()"
+  [class.is-mobile-nav-open]="mobileNavOpen()"
 >
+  <a class="skip-link" href="#main-content">Saltar al contenido</a>
   <aside
     class="sidebar"
     aria-label="Navegación principal"
@@ -24,9 +26,21 @@
         <strong>Pulso</strong>
         <small>LOCALIZACIÓN · PRO</small>
       </div>
+      <button class="menu-toggle" type="button" aria-controls="sidebar-menu"
+        [attr.aria-expanded]="mobileNavOpen()"
+        [attr.aria-label]="mobileNavOpen() ? 'Cerrar menú' : 'Abrir menú'"
+        (click)="toggleMobileNavigation()">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          @if (mobileNavOpen()) {
+            <path d="M5 5 19 19M19 5 5 19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          } @else {
+            <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+          }
+        </svg>
+      </button>
     </div>
 
-    <nav class="menu">
+    <nav class="menu" id="sidebar-menu" aria-label="Secciones">
       @for (item of navItems; track item.path) {
         <a
           class="nav-link"
@@ -35,6 +49,7 @@
           [attr.title]="item.label"
           [attr.aria-label]="item.label"
           [attr.aria-current]="pageTitle() === item.label ? 'page' : null"
+          (click)="onNavigate(item.path)"
         >
           <span class="nav-icon" aria-hidden="true">
             @switch (item.icon) {
@@ -44,6 +59,11 @@
                   <rect x="13.5" y="3.5" width="7" height="4.5" rx="1.6" stroke="currentColor" stroke-width="1.6" />
                   <rect x="13.5" y="10.5" width="7" height="10" rx="1.6" stroke="currentColor" stroke-width="1.6" />
                   <rect x="3.5" y="13" width="7" height="7.5" rx="1.6" stroke="currentColor" stroke-width="1.6" />
+                </svg>
+              }
+              @case ('map') {
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2V5Zm6-2v16m6-14v16" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
                 </svg>
               }
               @case ('contacts') {
@@ -100,9 +120,8 @@
             }
           </span>
           <span class="nav-label">{{ item.label }}</span>
-          <span class="nav-short">{{ item.shortLabel ?? item.label }}</span>
-          @if (item.badge) {
-            <span class="badge">{{ item.badge }}</span>
+          @if (item.icon === 'alerts' && overview.unreadCount()) {
+            <span class="badge">{{ overview.unreadCount() }}</span>
           }
         </a>
       }
@@ -122,13 +141,13 @@
       <p class="crumb">Pulso / {{ pageTitle() }}</p>
       <div class="top-actions">
         @if (session.isAuthenticated()) {
-          <span class="pill"><span class="dot"></span> GPS · Hace 8 seg</span>
+           <span class="pill"><span class="dot"></span> {{ locations.connected() ? 'Mapa en directo' : 'Sin conexión en tiempo real' }}</span>
           <span class="pill">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
               <path d="M5 12h2.2c.8-3 2.6-5 4.8-5s4 2 4.8 5H19" stroke="currentColor" stroke-width="1.6" />
               <path d="M8.2 16.2c1 .9 2.3 1.4 3.8 1.4s2.8-.5 3.8-1.4" stroke="currentColor" stroke-width="1.6" />
             </svg>
-            En línea
+             {{ locations.connected() ? 'En línea' : 'Reconectando' }}
           </span>
           <button class="icon-btn" type="button" aria-label="Notificaciones" routerLink="/alertas">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" aria-hidden="true">
@@ -139,7 +158,7 @@
               />
               <path d="M10 18.2a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" />
             </svg>
-            <span class="badge bell">3</span>
+             @if (overview.unreadCount()) { <span class="badge bell">{{ overview.unreadCount() }}</span> }
           </button>
           <button class="btn btn-ghost logout-btn" type="button" aria-label="Cerrar sesión" (click)="logout()">
             <svg class="logout-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -165,9 +184,9 @@
       </div>
     </header>
 
-    <section class="content">
+    <main class="content" id="main-content" tabindex="-1" #mainContent>
       <router-outlet />
-    </section>
+    </main>
   </div>
 </div>
 

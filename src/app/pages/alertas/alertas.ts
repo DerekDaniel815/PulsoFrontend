@@ -1,49 +1,92 @@
-import { Component, computed, signal } from '@angular/core';
-import { ALERTS, AlertSeverity } from './alertas.data';
+import { DatePipe } from '@angular/common';
+import { Component, computed, effect, inject, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { LocationsStore } from '../../core/locations/locations-store';
+import { NotificationRecord, NotificationsApi } from '../../core/notifications/notifications-api';
+import { OverviewStore } from '../../core/overview/overview-store';
+import { RouterLink } from '@angular/router';
 
-type AlertFilter = 'all' | 'unread' | AlertSeverity;
-
-const FILTER_LABELS: Record<AlertFilter, string> = {
-  all: 'Todas las alertas',
-  unread: 'Sin leer',
-  critical: 'Críticas',
-  warning: 'Advertencias',
-  info: 'Información',
-};
+type AlertFilter = 'all' | 'unread' | 'critical' | 'warning' | 'info';
 
 @Component({
   selector: 'app-alertas',
+  imports: [DatePipe, RouterLink],
   templateUrl: './alertas.html',
   styleUrl: './alertas.scss',
 })
 export class Alertas {
-  protected readonly alerts = ALERTS;
-  protected readonly selectedFilter = signal<AlertFilter>('unread');
-
+  private readonly api = inject(NotificationsApi);
+  private readonly locations = inject(LocationsStore);
+  private readonly overview = inject(OverviewStore);
+  protected readonly alerts = signal<NotificationRecord[]>([]);
+  protected readonly selectedFilter = signal<AlertFilter>('all');
+  protected readonly loading = signal(true);
+  protected readonly busy = signal(false);
+  protected readonly error = signal<string | null>(null);
+  protected readonly unreadCount = computed(() => this.alerts().filter((item) => !item.leida).length);
   protected readonly counts = computed(() => ({
-    unread: this.alerts.filter((alert) => !alert.read).length,
-    critical: this.alerts.filter((alert) => alert.severity === 'critical').length,
-    warning: this.alerts.filter((alert) => alert.severity === 'warning').length,
-    info: this.alerts.filter((alert) => alert.severity === 'info').length,
+    critical: this.alerts().filter((item) => this.severity(item) === 'critical').length,
+    warning: this.alerts().filter((item) => this.severity(item) === 'warning').length,
+    info: this.alerts().filter((item) => this.severity(item) === 'info').length,
   }));
-
-  protected readonly filteredAlerts = computed(() => {
+  protected readonly filtered = computed(() => {
     const filter = this.selectedFilter();
-
-    if (filter === 'all') {
-      return this.alerts;
-    }
-
-    if (filter === 'unread') {
-      return this.alerts.filter((alert) => !alert.read);
-    }
-
-    return this.alerts.filter((alert) => alert.severity === filter);
+    if (filter === 'all') return this.alerts();
+    if (filter === 'unread') return this.alerts().filter((item) => !item.leida);
+    return this.alerts().filter((item) => this.severity(item) === filter);
   });
 
-  protected readonly activeFilterLabel = computed(() => FILTER_LABELS[this.selectedFilter()]);
+  protected severity(item: NotificationRecord): 'critical' | 'warning' | 'info' {
+    const type = item.tipo.toUpperCase();
+    if (type.includes('SOS') || type.includes('EMERGENCIA')) return 'critical';
+    if (type.includes('DESCONEX') || type.includes('ALERTA') || type.includes('ADVERTENCIA')) return 'warning';
+    return 'info';
+  }
 
-  protected selectFilter(filter: AlertFilter): void {
-    this.selectedFilter.set(filter);
+  constructor() {
+    effect(() => {
+      this.locations.notificationVersion();
+      void this.refresh();
+    });
+  }
+
+  protected async refresh(): Promise<void> {
+    this.loading.set(true);
+    try {
+      this.alerts.set(await firstValueFrom(this.api.list()));
+      this.error.set(null);
+    } catch {
+      this.error.set('No se pudieron cargar las notificaciones.');
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  protected async markRead(item: NotificationRecord): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.read(item.idNotificacionUsuario));
+      await this.refresh();
+      void this.overview.refresh();
+    } catch {
+      this.error.set('No se pudo marcar la notificación como leída.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async markAllRead(): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.api.readAll());
+      await this.refresh();
+      void this.overview.refresh();
+    } catch {
+      this.error.set('No se pudieron actualizar las notificaciones.');
+    } finally {
+      this.busy.set(false);
+    }
   }
 }

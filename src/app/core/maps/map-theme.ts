@@ -3,19 +3,22 @@ export const MAP_CENTER: google.maps.LatLngLiteral = {
   lng: -3.6904,
 };
 
+// Mantener estos tonos sincronizados con los tokens del mapa en styles/_tokens.scss.
+export const MAP_BACKGROUND = '#0c1426';
+
 export const DARK_MAP_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: 'geometry', stylers: [{ color: '#10151f' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#10151f' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8b93a7' }] },
+  { elementType: 'geometry', stylers: [{ color: MAP_BACKGROUND }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: MAP_BACKGROUND }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#94a8c8' }] },
   { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
   { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1c2330' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#0b0e14' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#7a8194' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#243044' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a2a47' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#090d18' }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#94a8c8' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#263a5c' }] },
   { featureType: 'transit', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0b0e14' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#4a5568' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1a30' }] },
+  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#94a8c8' }] },
 ];
 
 export interface MapPoint {
@@ -37,17 +40,17 @@ export const MAP_POINTS: MapPoint[] = [
 
 const STATUS_COLOR: Record<MapPoint['status'], string> = {
   yo: '#00d1ff',
-  conectado: '#4ade80',
-  emergencia: '#ff4d4d',
-  ausente: '#f5c542',
-  'sin-conexion': '#667788',
+  conectado: '#23dc73',
+  emergencia: '#ff5966',
+  ausente: '#ffc044',
+  'sin-conexion': '#8195b7',
 };
 
 export function markerOptions(point: MapPoint): google.maps.MarkerOptions {
   const color = STATUS_COLOR[point.status];
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-    <circle cx="18" cy="18" r="14" fill="#1a1f2b" stroke="${color}" stroke-width="3"/>
-    <text x="18" y="22" text-anchor="middle" fill="#ffffff" font-size="10" font-family="Arial,sans-serif" font-weight="700">${point.initials}</text>
+    <circle cx="18" cy="18" r="14" fill="#141d35" stroke="${color}" stroke-width="3"/>
+    <text x="18" y="22" text-anchor="middle" fill="#f4f7ff" font-size="10" font-family="Arial,sans-serif" font-weight="700">${point.initials}</text>
   </svg>`;
 
   return {

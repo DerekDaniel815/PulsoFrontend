@@ -1,45 +1,37 @@
+import { HttpClient } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { SessionStore } from '../../core/auth/session-store';
 import { Configuracion } from './configuracion';
 
 describe('Configuracion', () => {
   let fixture: ComponentFixture<Configuracion>;
+  const user = {
+    idUsuario: 1, nombres: 'Ana', apellidos: 'López', correo: 'ana@example.com',
+    telefono: null, rol: 'USUARIO' as const, estado: true, fechaRegistro: '', fechaActualizacion: '',
+  };
+  const http = { patch: vi.fn(() => of({ ...user, nombres: 'Ana María' })) };
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [Configuracion] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [Configuracion], providers: [
+      { provide: HttpClient, useValue: http }, SessionStore,
+    ] }).compileComponents();
+    TestBed.inject(SessionStore).setUser(user);
     fixture = TestBed.createComponent(Configuracion);
     fixture.detectChanges();
   });
 
-  it('changes the personal status', () => {
-    const statusButtons = fixture.nativeElement.querySelectorAll(
-      '.status-options button',
-    ) as NodeListOf<HTMLButtonElement>;
-    statusButtons[2].click();
-    fixture.detectChanges();
-
-    expect(statusButtons[2].getAttribute('aria-checked')).toBe('true');
+  it('shows the authenticated profile', () => {
+    expect(fixture.nativeElement.textContent).toContain('Ana López');
   });
 
-  it('disables GPS options with the GPS switch', () => {
-    const gpsSwitch = fixture.nativeElement.querySelector(
-      '.setting-row .switch',
-    ) as HTMLButtonElement;
-    gpsSwitch.click();
+  it('updates the profile via PATCH /users/me', async () => {
+    (fixture.nativeElement.querySelector('.secondary-button') as HTMLButtonElement).click();
     fixture.detectChanges();
-
-    expect(gpsSwitch.getAttribute('aria-checked')).toBe('false');
-    expect(fixture.nativeElement.querySelector('.segment-setting').disabled).toBe(true);
-  });
-
-  it('shows feedback after a danger action', () => {
-    const action = fixture.nativeElement.querySelector(
-      '.danger-action button',
-    ) as HTMLButtonElement;
-    action.click();
+    (fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
     fixture.detectChanges();
-
-    expect(fixture.nativeElement.querySelector('.action-feedback').textContent).toContain(
-      'revocados',
-    );
+    expect(http.patch).toHaveBeenCalledWith(expect.stringContaining('/users/me'), expect.objectContaining({ nombres: 'Ana' }));
+    expect(fixture.nativeElement.textContent).toContain('Ana María');
   });
 });

@@ -1,13 +1,24 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { GoogleMap, MapMarker } from '@angular/google-maps';
+import { firstValueFrom } from 'rxjs';
+import { PULSO_API_URL } from '../../core/auth/auth.config';
+import { SessionStore } from '../../core/auth/session-store';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
-import { DARK_MAP_STYLES, MAP_CENTER, MAP_POINTS, MapPoint, markerOptions } from '../../core/maps/map-theme';
+import { LocationsStore } from '../../core/locations/locations-store';
+import { DARK_MAP_STYLES, MAP_BACKGROUND, MAP_CENTER, MapPoint, markerOptions } from '../../core/maps/map-theme';
 
 interface ReadyMarker {
   id: string;
   title: string;
   position: google.maps.LatLngLiteral;
   options: google.maps.MarkerOptions;
+}
+
+interface PublicLocation {
+  clavePublica: string;
+  origen: 'PUBLICO' | 'EMERGENCIA';
+  ubicacion: { latitud: number; longitud: number };
 }
 
 @Component({
@@ -18,9 +29,12 @@ interface ReadyMarker {
 })
 export class LiveMap {
   private readonly loader = inject(GoogleMapsLoader);
+  private readonly http = inject(HttpClient);
+  private readonly session = inject(SessionStore);
+  private readonly publicLocations = signal<PublicLocation[]>([]);
+  protected readonly locations = inject(LocationsStore);
 
   readonly overlayLayout = input(false);
-  readonly showDemoMarkers = input(false);
 
   protected readonly ready = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -48,11 +62,29 @@ export class LiveMap {
       }));
     });
     effect(() => {
-      this.showDemoMarkers();
+      this.locations.locations();
+      this.publicLocations();
+      this.session.isAuthenticated();
       if (this.ready()) {
         this.updateMarkers();
       }
     });
+    effect(() => {
+      if (this.session.isAuthenticated()) {
+        this.publicLocations.set([]);
+      } else {
+        void this.loadPublicLocations();
+      }
+    });
+  }
+
+  private async loadPublicLocations(): Promise<void> {
+    try {
+      const items = await firstValueFrom(this.http.get<PublicLocation[]>(`${PULSO_API_URL}/locations/public`));
+      if (!this.session.isAuthenticated()) this.publicLocations.set(items);
+    } catch {
+      if (!this.session.isAuthenticated()) this.locationMessage.set('No se pudieron cargar las ubicaciones públicas.');
+    }
   }
 
   private async init(): Promise<void> {
@@ -69,7 +101,7 @@ export class LiveMap {
         mapTypeControl: false,
         gestureHandling: 'greedy',
         clickableIcons: false,
-        backgroundColor: '#10151f',
+        backgroundColor: MAP_BACKGROUND,
         styles: DARK_MAP_STYLES,
       });
       this.ready.set(true);
@@ -113,9 +145,21 @@ export class LiveMap {
       return;
     }
 
-    const points: MapPoint[] = this.showDemoMarkers()
-      ? MAP_POINTS.filter((point) => point.id !== 'tu')
-      : [];
+    const privatePoints: MapPoint[] = this.locations.locations().map((item) => ({
+      id: String(item.assignment.idUsuarioDispositivo),
+      title: item.assignment.alias || item.assignment.codigoDispositivo,
+      initials: 'GPS',
+      status: item.emergenciaActiva ? 'emergencia' : 'conectado',
+      position: { lat: item.location.latitud, lng: item.location.longitud },
+    }));
+    const publicPoints: MapPoint[] = this.publicLocations().map((item) => ({
+      id: `public-${item.clavePublica}`,
+      title: item.origen === 'EMERGENCIA' ? 'Emergencia pública' : 'Ubicación pública',
+      initials: item.origen === 'EMERGENCIA' ? 'SOS' : 'GPS',
+      status: item.origen === 'EMERGENCIA' ? 'emergencia' : 'conectado',
+      position: { lat: item.ubicacion.latitud, lng: item.ubicacion.longitud },
+    }));
+    const points = this.session.isAuthenticated() ? privatePoints : publicPoints;
 
     if (currentPosition) {
       points.unshift({

@@ -3,7 +3,7 @@
 }
 .settings-page {
   display: grid;
-  gap: 18px;
+  gap: var(--space-3);
   width: min(100%, 980px);
   min-width: 0;
   margin: 0 auto;
@@ -31,7 +31,7 @@
   text-transform: uppercase;
 }
 .settings-card {
-  padding: 24px 28px;
+  padding: var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--bg-elevated);
@@ -62,7 +62,7 @@
   height: 64px;
   border-radius: 50%;
   color: #fff;
-  background: linear-gradient(135deg, #7048ed, #3565ef);
+  background: linear-gradient(135deg, var(--violet), #4655da);
   font-size: 21px;
   font-weight: 750;
 }
@@ -138,9 +138,9 @@ legend {
   font-weight: 800;
 }
 .status-options button.is-active {
-  border-color: rgba(74, 222, 128, 0.3);
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
   color: var(--success);
-  background: rgba(74, 222, 128, 0.1);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
 }
 .status-attention span {
   color: var(--warning) !important;
@@ -154,6 +154,47 @@ legend {
   gap: 20px;
   min-height: 54px;
 }
+
+.device-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.visibility-select {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.visibility-select select,
+.profile-card input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.profile-card form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.profile-card form label {
+  display: grid;
+  gap: 6px;
+}
+
+.settings-note {
+  color: var(--text-muted);
+}
+
+.settings-card fieldset:disabled {
+  opacity: 0.66;
+}
 .setting-row strong {
   margin-bottom: 3px;
   font-size: 12px;
@@ -165,7 +206,7 @@ legend {
   padding: 3px;
   border: 0;
   border-radius: var(--radius-pill);
-  background: #293249;
+  background: var(--surface-hover);
   cursor: pointer;
 }
 .switch span {
@@ -192,7 +233,7 @@ legend {
   padding: 0 12px;
 }
 .segment-setting button.is-active {
-  border-color: rgba(0, 209, 255, 0.4);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
   color: var(--primary);
   background: var(--primary-soft);
   font-weight: 650;
@@ -206,10 +247,10 @@ legend {
 .warning-message {
   margin: 10px 0 0;
   padding: 13px 16px;
-  border: 1px solid rgba(255, 152, 0, 0.25);
+  border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
   border-radius: 10px;
   color: var(--warning);
-  background: rgba(255, 152, 0, 0.07);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
   font-size: 10px;
   line-height: 1.6;
 }

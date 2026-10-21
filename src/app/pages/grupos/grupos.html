@@ -3,109 +3,76 @@
     <div>
       <p class="eyebrow">Ubicación compartida</p>
       <h1 id="groups-title">Grupos</h1>
-      <p class="intro">
-        {{ groupsWithAccess() }} con acceso a ubicación · {{ groups().length }} grupos en total
-      </p>
+      <p class="intro">{{ groups().length }} grupos en tu red</p>
     </div>
-    <button class="new-group" type="button">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M12 5v14M5 12h14"
-          stroke="currentColor"
-          stroke-width="1.8"
-          stroke-linecap="round"
-        />
-      </svg>
-      Nuevo grupo
-    </button>
+    <button class="new-group" type="button" [attr.aria-expanded]="showForm()" aria-controls="create-group" (click)="showForm.update((value) => !value)">+ Nuevo grupo</button>
   </header>
-
+  @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="refresh()">Reintentar</button></p> }
+  @if (notice()) { <p role="status">{{ notice() }}</p> }
+  @if (loading()) { <p role="status">Cargando grupos…</p> }
+  @if (showForm()) {
+    <form id="create-group" class="create-group" (submit)="$event.preventDefault(); create()">
+      <label>Nombre del nuevo grupo
+        <input type="text" maxlength="100" required [value]="newName()" (input)="updateName($event)" />
+      </label>
+      <button class="new-group" type="submit" [disabled]="busy() || !newName().trim()">Crear</button>
+    </form>
+  }
+  @if (assignments().length) {
+    <label class="assignment-picker">Configurar permisos del dispositivo
+      <select [value]="selectedAssignmentId()" (change)="selectAssignment($event)">
+        @for (assignment of assignments(); track assignment.idUsuarioDispositivo) {
+          <option [value]="assignment.idUsuarioDispositivo">{{ assignment.alias || 'Dispositivo ' + assignment.idUsuarioDispositivo }}</option>
+        }
+      </select>
+    </label>
+  } @else if (!loading()) {
+    <p class="info-notice">Vincula un dispositivo para compartir su ubicación con grupos.</p>
+  }
   <div class="group-grid">
-    @for (group of groups(); track group.id) {
-      <article class="group-card" [class]="'group-card tone-' + group.tone">
+    @for (group of groups(); track group.idGrupo) {
+      <article class="group-card">
         <div class="group-head">
-          <span class="group-icon" aria-hidden="true">{{ group.icon }}</span>
-          <div class="group-name">
-            <h2>{{ group.name }}</h2>
-            <p>
-              {{ group.members.length }} {{ group.members.length === 1 ? 'miembro' : 'miembros' }}
-            </p>
-          </div>
-          <div class="group-state">
-            <span [class.is-active]="group.active">{{ group.active ? 'Activo' : 'Inactivo' }}</span>
-            <button
-              class="switch"
-              type="button"
-              role="switch"
-              [class.is-active]="group.active"
-              [attr.aria-checked]="group.active"
-              [attr.aria-label]="(group.active ? 'Desactivar ' : 'Activar ') + group.name"
-              (click)="toggleGroup(group.id)"
-            >
-              <span></span>
-            </button>
-          </div>
+          <span class="group-icon" aria-hidden="true">{{ group.nombre.charAt(0).toUpperCase() }}</span>
+          <div class="group-name"><h2>{{ group.nombre }}</h2>
+            <p>{{ group.miembros?.length ?? 0 }} miembros</p></div>
+          @if (selectedAssignmentId() !== null) {
+            <div class="group-state">
+              <span [class.is-active]="isSharing(group.idGrupo)">{{ isSharing(group.idGrupo) ? 'Compartiendo' : 'Privado' }}</span>
+              <button class="switch" type="button" role="switch" [disabled]="busy()" [class.is-active]="isSharing(group.idGrupo)" [attr.aria-checked]="isSharing(group.idGrupo)" [attr.aria-label]="(isSharing(group.idGrupo) ? 'Dejar de compartir con ' : 'Compartir ubicación con ') + group.nombre" (click)="toggleSharing(group.idGrupo)"><span></span></button>
+            </div>
+          }
         </div>
-
-        <p class="description">
-          {{ group.description }}<span aria-hidden="true">·</span>{{ group.accessLabel }}
-        </p>
-
-        <div class="members">
-          <div class="avatar-stack" [attr.aria-label]="'Miembros de ' + group.name">
-            @for (member of group.members; track member.name) {
-              <span
-                class="member-avatar"
-                [class.is-offline]="!member.online"
-                [style.background]="member.color"
-                [attr.title]="member.name"
-              >
-                {{ member.initials }}
-              </span>
+        @if (group.descripcion) { <p class="description">{{ group.descripcion }}</p> }
+        @if (group.miembros?.length) {
+          <div class="members"><div class="avatar-stack" [attr.aria-label]="'Miembros de ' + group.nombre">
+            @for (member of group.miembros; track member.idGrupoUsuario) {
+              <span class="member-avatar" [title]="member.usuario.nombres + ' ' + member.usuario.apellidos">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
             }
-          </div>
-          <span>{{ onlineMembers(group) }}/{{ group.members.length }} en línea</span>
-        </div>
-      </article>
-    }
-  </div>
-
-  <section class="permissions" aria-labelledby="permissions-title">
-    <h2 id="permissions-title">Resumen de permisos de ubicación</h2>
-    <ul>
-      @for (group of groups(); track group.id) {
-        <li>
-          <span
-            class="permission-icon"
-            [class]="'permission-icon tone-' + group.tone"
-            aria-hidden="true"
-          >
-            {{ group.icon }}
-          </span>
-          <strong>{{ group.name }}</strong>
-          <span class="permission-state" [class.has-access]="group.active">
-            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              @if (group.active) {
-                <path
-                  d="m6 12.5 4 4L18 8"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              } @else {
-                <path
-                  d="m8 8 8 8m0-8-8 8"
-                  stroke="currentColor"
-                  stroke-width="1.8"
-                  stroke-linecap="round"
-                />
+          </div></div>
+        }
+        @if (canInvite(group)) {
+          <button class="invite-toggle" type="button" [attr.aria-expanded]="inviteGroupId() === group.idGrupo" [attr.aria-controls]="'invite-' + group.idGrupo" (click)="startInvite(group.idGrupo)">Invitar miembro</button>
+          @if (inviteGroupId() === group.idGrupo) {
+            <div class="invite-form" [id]="'invite-' + group.idGrupo">
+              <label>Buscar usuario <input type="search" [value]="searchTerm()" (input)="updateSearch($event)" /></label>
+              <button type="button" [disabled]="searchTerm().trim().length < 2" (click)="searchUsers()">Buscar</button>
+              @for (user of searchResults(); track user.idUsuario) {
+                <p>{{ user.nombres }} {{ user.apellidos }} <button type="button" [disabled]="busy()" (click)="invite(group.idGrupo, user)">Invitar</button></p>
               }
-            </svg>
-            {{ group.active ? 'Acceso' : 'Sin acceso' }}
-          </span>
-        </li>
-      }
-    </ul>
+            </div>
+          }
+        }
+      </article>
+    } @empty { @if (!loading()) { <p>No perteneces a ningún grupo.</p> } }
+  </div>
+  <section class="permissions" aria-labelledby="invites-title">
+    <h2 id="invites-title">Invitaciones recibidas</h2>
+    @for (invite of invitations(); track invite.idInvitacion) {
+      <p>{{ invite.nombreGrupo }} · {{ invite.invitador.nombres }} {{ invite.invitador.apellidos }}
+        <button type="button" [disabled]="busy()" (click)="respond(invite, 'accept')">Aceptar</button>
+        <button type="button" [disabled]="busy()" (click)="respond(invite, 'reject')">Rechazar</button>
+      </p>
+    } @empty { <p>No hay invitaciones pendientes.</p> }
   </section>
 </section>

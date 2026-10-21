@@ -1,239 +1,65 @@
 <section class="settings-page" aria-labelledby="settings-title">
-  <header class="page-heading">
-    <p class="eyebrow">Cuenta y dispositivo</p>
+  <header class="page-heading"><p class="eyebrow">Cuenta</p>
     <h1 id="settings-title">Configuración</h1>
-    <p>Preferencias de privacidad y ubicación</p>
   </header>
-
   <section class="settings-card profile-card" aria-labelledby="profile-title">
     <h2 id="profile-title">Perfil</h2>
-    <div class="profile-row">
-      <span class="profile-avatar" aria-hidden="true">{{ profileInitials() }}</span>
-      <div class="profile-copy">
-        <strong>{{ profileName() }}</strong>
-        <span>
-          {{ session.user()?.correo }}
-          @if (session.user()?.telefono) {
-            · {{ session.user()?.telefono }}
-          }
-        </span>
-      </div>
-      <button class="secondary-button" type="button">Editar perfil</button>
-    </div>
-
-    <fieldset class="status-options">
-      <legend>Estado personal</legend>
-      <div role="radiogroup" aria-label="Estado personal">
-        <button
-          class="status-safe"
-          type="button"
-          role="radio"
-          [class.is-active]="personalStatus() === 'safe'"
-          [attr.aria-checked]="personalStatus() === 'safe'"
-          (click)="setPersonalStatus('safe')"
-        >
-          <span aria-hidden="true">✓</span>Seguro/a
-        </button>
-        <button
-          class="status-attention"
-          type="button"
-          role="radio"
-          [class.is-active]="personalStatus() === 'attention'"
-          [attr.aria-checked]="personalStatus() === 'attention'"
-          (click)="setPersonalStatus('attention')"
-        >
-          <span aria-hidden="true">▲</span>Necesita atención
-        </button>
-        <button
-          class="status-emergency"
-          type="button"
-          role="radio"
-          [class.is-active]="personalStatus() === 'emergency'"
-          [attr.aria-checked]="personalStatus() === 'emergency'"
-          (click)="setPersonalStatus('emergency')"
-        >
-          <span aria-hidden="true">!</span>Emergencia
-        </button>
-        <button
-          class="status-unknown"
-          type="button"
-          role="radio"
-          [class.is-active]="personalStatus() === 'unknown'"
-          [attr.aria-checked]="personalStatus() === 'unknown'"
-          (click)="setPersonalStatus('unknown')"
-        >
-          <span aria-hidden="true">?</span>Sin información
-        </button>
-      </div>
-    </fieldset>
-  </section>
-
-  <section class="settings-card" aria-labelledby="gps-title">
-    <h2 id="gps-title">GPS y localización</h2>
-    <div class="setting-row">
-      <div><strong>GPS activo</strong><span>Compartir tu ubicación en tiempo real</span></div>
-      <button
-        class="switch"
-        type="button"
-        role="switch"
-        [class.is-active]="gpsEnabled()"
-        [attr.aria-checked]="gpsEnabled()"
-        aria-label="Activar o desactivar GPS"
-        (click)="toggleGps()"
-      >
-        <span></span>
-      </button>
-    </div>
-
-    <fieldset class="segment-setting" [disabled]="!gpsEnabled()">
-      <legend>Precisión GPS</legend>
-      <div role="radiogroup" aria-label="Precisión GPS">
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="precision() === 'high'"
-          [attr.aria-checked]="precision() === 'high'"
-          (click)="setPrecision('high')"
-        >
-          Alta (±5 m)
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="precision() === 'balanced'"
-          [attr.aria-checked]="precision() === 'balanced'"
-          (click)="setPrecision('balanced')"
-        >
-          Equilibrado (±15 m)
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="precision() === 'battery'"
-          [attr.aria-checked]="precision() === 'battery'"
-          (click)="setPrecision('battery')"
-        >
-          Ahorro batería (±50 m)
-        </button>
-      </div>
-    </fieldset>
-
-    <fieldset class="segment-setting frequency" [disabled]="!gpsEnabled()">
-      <legend>Frecuencia de actualización</legend>
-      <div role="radiogroup" aria-label="Frecuencia de actualización">
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="frequency() === '10s'"
-          [attr.aria-checked]="frequency() === '10s'"
-          (click)="setFrequency('10s')"
-        >
-          10 seg
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="frequency() === '30s'"
-          [attr.aria-checked]="frequency() === '30s'"
-          (click)="setFrequency('30s')"
-        >
-          30 seg
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="frequency() === '1m'"
-          [attr.aria-checked]="frequency() === '1m'"
-          (click)="setFrequency('1m')"
-        >
-          1 min
-        </button>
-        <button
-          type="button"
-          role="radio"
-          [class.is-active]="frequency() === '5m'"
-          [attr.aria-checked]="frequency() === '5m'"
-          (click)="setFrequency('5m')"
-        >
-          5 min
-        </button>
-      </div>
-    </fieldset>
-  </section>
-
-  <section class="settings-card" aria-labelledby="privacy-title">
-    <h2 id="privacy-title">Privacidad y seguridad</h2>
-    <div class="setting-row">
-      <div><strong>Notificaciones</strong><span>Alertas y eventos importantes</span></div>
-      <button
-        class="switch"
-        type="button"
-        role="switch"
-        [class.is-active]="notificationsEnabled()"
-        [attr.aria-checked]="notificationsEnabled()"
-        aria-label="Activar o desactivar notificaciones"
-        (click)="toggleNotifications()"
-      >
-        <span></span>
-      </button>
-    </div>
-    <div class="setting-row">
-      <div>
-        <strong>Modo Emergencia Global</strong
-        ><span>Amplía la visibilidad para facilitar localización en catástrofes</span>
-      </div>
-      <button
-        class="switch"
-        type="button"
-        role="switch"
-        [class.is-active]="globalEmergencyEnabled()"
-        [attr.aria-checked]="globalEmergencyEnabled()"
-        aria-label="Activar o desactivar modo emergencia global"
-        (click)="toggleGlobalEmergency()"
-      >
-        <span></span>
-      </button>
-    </div>
-    <p class="warning-message">
-      <span aria-hidden="true">▲</span>El modo emergencia hace tu ubicación visible para facilitar
-      tu localización. Actívalo solo en situaciones de riesgo real.
-    </p>
-  </section>
-
-  <section class="settings-card danger-card" aria-labelledby="danger-title">
-    <h2 id="danger-title">Zona de peligro</h2>
-    <div class="danger-action warning-action">
-      <div>
-        <strong>Revocar todos los permisos de ubicación</strong
-        ><span>Elimina el acceso de todos los contactos a tu ubicación</span>
-      </div>
-      <button type="button" (click)="executeAction('Los permisos de ubicación fueron revocados.')">
-        Ejecutar
-      </button>
-    </div>
-    <div class="danger-action">
-      <div>
-        <strong>Eliminar historial de ubicaciones</strong
-        ><span>Borra permanentemente todos los registros históricos</span>
-      </div>
-      <button type="button" (click)="executeAction('El historial de ubicaciones fue eliminado.')">
-        Ejecutar
-      </button>
-    </div>
-    <div class="danger-action">
-      <div>
-        <strong>Cerrar sesión en todos los dispositivos</strong
-        ><span>Desconecta todas las sesiones activas</span>
-      </div>
-      <button
-        type="button"
-        (click)="executeAction('Se cerraron las sesiones de los demás dispositivos.')"
-      >
-        Ejecutar
-      </button>
-    </div>
-    @if (actionMessage()) {
-      <p class="action-feedback" role="status">{{ actionMessage() }}</p>
+    <div class="profile-row"><div class="profile-copy">
+      <strong>{{ profileName() }}</strong>
+      <span>{{ session.user()?.correo }} · {{ session.user()?.telefono || 'Sin teléfono' }}</span>
+    </div></div>
+    @if (success()) { <p role="status">Perfil actualizado.</p> }
+    @if (error()) { <p role="alert">{{ error() }}</p> }
+    @if (editing()) {
+      <form (submit)="$event.preventDefault(); save()">
+        <label>Nombres <input type="text" required maxlength="100" [value]="nombres()" (input)="update('nombres', $event)" /></label>
+        <label>Apellidos <input type="text" required maxlength="100" [value]="apellidos()" (input)="update('apellidos', $event)" /></label>
+        <label>Teléfono <input type="tel" maxlength="30" [value]="telefono()" (input)="update('telefono', $event)" /></label>
+        <button type="submit" [disabled]="saving() || !nombres().trim() || !apellidos().trim()">Guardar</button>
+        <button type="button" (click)="editing.set(false)">Cancelar</button>
+      </form>
+    } @else {
+      <button class="secondary-button" type="button" (click)="edit()">Editar perfil</button>
     }
+  </section>
+  <section class="settings-card" aria-labelledby="devices-title">
+    <h2 id="devices-title">GPS y visibilidad</h2>
+    @if (devicesLoading()) { <p role="status">Cargando dispositivos…</p> }
+    @if (deviceError()) { <p role="alert">{{ deviceError() }} <button type="button" (click)="loadDevices()">Reintentar</button></p> }
+    @for (device of devices(); track device.idUsuarioDispositivo) {
+      <div class="setting-row device-row">
+        <div><strong>{{ device.alias || 'Dispositivo ' + device.idUsuarioDispositivo }}</strong>
+          <span>Registro de ubicaciones {{ device.ubicacionActiva ? 'activo' : 'pausado' }}</span></div>
+        <button class="switch" type="button" role="switch" [class.is-active]="device.ubicacionActiva" [attr.aria-checked]="device.ubicacionActiva" [attr.aria-label]="(device.ubicacionActiva ? 'Pausar' : 'Activar') + ' ubicación del dispositivo ' + (device.alias || device.idUsuarioDispositivo)" [disabled]="updatingDevice() !== null" (click)="updateDevice(device, { ubicacionActiva: !device.ubicacionActiva })"><span></span></button>
+      </div>
+      <label class="visibility-select">Visibilidad de {{ device.alias || 'dispositivo ' + device.idUsuarioDispositivo }}
+        <select [value]="device.visibilidadPreferida" [disabled]="updatingDevice() !== null" (change)="selectVisibility(device, $event)">
+          <option value="SOLO_YO">Solo yo</option>
+          <option value="GRUPO">Contactos y grupos autorizados</option>
+          <option value="PUBLICO">Público</option>
+        </select>
+      </label>
+    } @empty { @if (!deviceError() && !devicesLoading()) { <p class="empty-state">No hay dispositivos vinculados para configurar.</p> } }
+  </section>
+  <section class="settings-card" aria-labelledby="preferences-title">
+    <h2 id="preferences-title">Preferencias de ubicación</h2>
+    <p class="settings-note">Estas preferencias dependen del hardware o de funciones que aún no ofrece la API web.</p>
+    <fieldset class="status-options" disabled>
+      <legend>Estado personal · no disponible</legend>
+      <div><button type="button">Seguro/a</button><button type="button">Necesita atención</button><button type="button">Emergencia</button></div>
+    </fieldset>
+    <fieldset class="segment-setting" disabled>
+      <legend>Precisión GPS · controlada por el dispositivo</legend>
+      <div><button type="button">Alta</button><button type="button">Equilibrada</button><button type="button">Ahorro batería</button></div>
+    </fieldset>
+    <fieldset class="segment-setting" disabled>
+      <legend>Frecuencia de actualización · controlada por el dispositivo</legend>
+      <div><button type="button">10 seg</button><button type="button">30 seg</button><button type="button">1 min</button><button type="button">5 min</button></div>
+    </fieldset>
+  </section>
+  <section class="settings-card" aria-labelledby="unsupported-title">
+    <h2 id="unsupported-title">Opciones no disponibles</h2>
+    <p>El backend tampoco ofrece borrado del historial ni cierre remoto de sesiones. No se muestran acciones que aparenten ejecutarlas.</p>
+    <p>Los permisos de ubicación con contactos se gestionan en la página Contactos.</p>
   </section>
 </section>

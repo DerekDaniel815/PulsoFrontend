@@ -18,7 +18,8 @@ export const routes: Routes = [
       },
       {
         path: 'mapa',
-        redirectTo: 'dashboard',
+        canActivate: [authGuard],
+        loadComponent: () => import('./pages/mapa/mapa').then((m) => m.Mapa),
       },
       {
         path: 'contactos',
