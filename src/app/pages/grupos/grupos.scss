@@ -4,7 +4,7 @@
 
 .groups-page {
   display: grid;
-  gap: 22px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -91,6 +91,7 @@ h1 {
 }
 
 .group-card {
+  --group-accent: var(--violet);
   position: relative;
   min-width: 0;
   min-height: 205px;
@@ -101,11 +102,23 @@ h1 {
   background: var(--bg-elevated);
 }
 
+.group-card:nth-child(4n + 2) {
+  --group-accent: var(--primary);
+}
+
+.group-card:nth-child(4n + 3) {
+  --group-accent: var(--emergency);
+}
+
+.group-card:nth-child(4n + 4) {
+  --group-accent: var(--warning);
+}
+
 .group-card::before {
   position: absolute;
   inset: 0 0 auto;
   height: 3px;
-  background: currentColor;
+  background: var(--group-accent);
   content: '';
 }
 
@@ -137,6 +150,7 @@ h1 {
   height: 44px;
   border-radius: 12px;
   background: color-mix(in srgb, currentColor 12%, var(--surface));
+  color: var(--group-accent);
   font-size: 22px;
   font-weight: 800;
 }
@@ -183,7 +197,7 @@ h1 {
   padding: 3px;
   border: 0;
   border-radius: var(--radius-pill);
-  background: #293249;
+  background: var(--surface-hover);
   cursor: pointer;
 }
 
@@ -238,6 +252,7 @@ h1 {
   border: 2px solid var(--bg-elevated);
   border-radius: 50%;
   color: #fff;
+  background: var(--surface-hover);
   font-size: 9px;
   font-weight: 750;
 }
@@ -294,6 +309,93 @@ h1 {
 .permission-state svg {
   width: 13px;
   height: 13px;
+}
+
+.create-group,
+.assignment-picker {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.create-group label,
+.assignment-picker {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.create-group input,
+.assignment-picker select {
+  display: block;
+  min-height: 40px;
+  margin-top: 6px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--bg-elevated);
+}
+
+.info-notice {
+  color: var(--text-muted);
+}
+
+.invite-toggle {
+  margin-top: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.invite-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--text);
+}
+
+.invite-form input {
+  display: block;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 4px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+}
+
+.group-head {
+  flex-wrap: wrap;
+}
+
+.group-state {
+  flex: 0 0 auto;
+}
+
+.group-card {
+  padding: var(--space-2);
+}
+
+.group-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+}
+
+@media (max-width: 480px) {
+  .group-state {
+    justify-content: space-between;
+    width: 100%;
+    margin-left: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
 }
 
 @media (max-width: 1150px) {

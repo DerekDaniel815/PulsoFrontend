@@ -1,4 +1,4 @@
-const REMOTE_API_URL = 'https://pulso-backend-demo.onrender.com';
+export const REMOTE_API_URL = 'https://pulso-backend-demo.onrender.com';
 const hostname = globalThis.location?.hostname;
 const isLocalDevelopment = hostname === 'localhost' || hostname === '127.0.0.1';
 

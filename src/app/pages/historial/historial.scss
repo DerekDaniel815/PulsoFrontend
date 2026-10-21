@@ -4,7 +4,7 @@
 
 .history-page {
   display: grid;
-  gap: 18px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -57,7 +57,7 @@ h1 {
   gap: 8px;
   min-height: 40px;
   padding: 0 15px;
-  border: 1px solid rgba(0, 209, 255, 0.32);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
   border-radius: 11px;
   color: var(--primary);
   background: var(--primary-soft);
@@ -104,7 +104,7 @@ h1 {
 
 .period-filters button.is-active,
 .date-filter.is-active {
-  border-color: rgba(0, 209, 255, 0.4);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
   color: var(--primary);
   background: var(--primary-soft);
 }
@@ -137,7 +137,7 @@ h1 {
 .history-layout {
   display: grid;
   grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.65fr);
-  gap: 16px;
+  gap: var(--space-2);
   min-height: 610px;
 }
 
@@ -198,7 +198,7 @@ h1 {
   width: 10px;
   height: 10px;
   margin-top: 3px;
-  border: 2px solid #344362;
+  border: 2px solid var(--border-strong);
   border-radius: 50%;
   background: var(--bg-elevated);
 }
@@ -242,17 +242,17 @@ h1 {
   margin: 0;
   overflow: hidden;
   color: var(--primary);
-  background-color: #0e1725;
+  background-color: var(--map-bg);
   background-image:
-    linear-gradient(90deg, transparent 44%, #162339 44%, #162339 56%, transparent 56%),
-    linear-gradient(transparent 43%, #162339 43%, #162339 57%, transparent 57%);
+    linear-gradient(90deg, transparent 44%, var(--map-block) 44%, var(--map-block) 56%, transparent 56%),
+    linear-gradient(transparent 43%, var(--map-block) 43%, var(--map-block) 57%, transparent 57%);
   background-size: 165px 130px;
 }
 
 .route-map::after {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(11, 14, 20, 0.05), rgba(11, 14, 20, 0.25));
+  background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--bg) 26%, transparent));
   content: '';
   pointer-events: none;
 }
@@ -266,7 +266,7 @@ h1 {
   border: 1px solid var(--border-strong);
   border-radius: 9px;
   color: var(--primary);
-  background: rgba(11, 14, 20, 0.78);
+  background: color-mix(in srgb, var(--sidebar-bg) 90%, transparent);
   font-size: 10px;
   font-weight: 650;
 }
@@ -280,13 +280,24 @@ h1 {
 }
 
 .route-point {
-  fill: #253657;
-  stroke: #344e7e;
+  fill: var(--surface-hover);
+  stroke: var(--border-strong);
   stroke-width: 0.35;
 }
 
 .route-current {
   fill: var(--primary);
+}
+
+.route-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 1;
+  width: max-content;
+  max-width: 90%;
+  color: var(--text-muted);
+  transform: translate(-50%, -50%);
 }
 
 .metrics {

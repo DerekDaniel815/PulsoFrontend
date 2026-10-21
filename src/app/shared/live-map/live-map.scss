@@ -14,7 +14,7 @@
   padding: 8px 12px;
   transform: translateX(-50%);
   color: var(--text);
-  background: rgba(11, 14, 20, 0.78);
+  background: color-mix(in srgb, var(--sidebar-bg) 88%, transparent);
   border: 1px solid var(--border-strong);
   border-radius: 10px;
   box-shadow: var(--shadow);
@@ -38,7 +38,7 @@
   padding: 0 10px;
   color: var(--primary);
   background: var(--primary-soft);
-  border: 1px solid rgba(0, 209, 255, 0.32);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
   border-radius: 8px;
   cursor: pointer;
 }
@@ -60,5 +60,5 @@ google-map {
   display: grid;
   place-items: center;
   color: var(--text-muted);
-  background: #10151f;
+  background: var(--map-bg);
 }

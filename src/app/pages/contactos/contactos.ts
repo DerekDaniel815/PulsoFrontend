@@ -1,10 +1,9 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
-import { CONTACT_STATUS_LABELS, CONTACTS, ContactGroup, ContactStatus } from './contactos.data';
-
-type GroupFilter = 'Todos' | ContactGroup;
-type StatusFilter = 'all' | ContactStatus;
-type ViewMode = 'list' | 'grid';
+import { firstValueFrom } from 'rxjs';
+import { ContactRecord, ContactsApi, PublicUser } from '../../core/contacts/contacts-api';
+import { LocationsStore } from '../../core/locations/locations-store';
 
 @Component({
   selector: 'app-contactos',
@@ -13,52 +12,117 @@ type ViewMode = 'list' | 'grid';
   styleUrl: './contactos.scss',
 })
 export class Contactos {
-  protected readonly contacts = CONTACTS;
-  protected readonly statusLabels = CONTACT_STATUS_LABELS;
-  protected readonly groups: readonly GroupFilter[] = [
-    'Todos',
-    'Familia',
-    'Amigos',
-    'Emergencias',
-    'Equipo',
-  ];
+  private readonly api = inject(ContactsApi);
+  private readonly locations = inject(LocationsStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private searchGeneration = 0;
+  protected readonly contacts = signal<ContactRecord[]>([]);
+  protected readonly requests = signal<ContactRecord[]>([]);
+  protected readonly results = signal<PublicUser[]>([]);
   protected readonly searchTerm = signal('');
-  protected readonly selectedGroup = signal<GroupFilter>('Todos');
-  protected readonly selectedStatus = signal<StatusFilter>('all');
-  protected readonly viewMode = signal<ViewMode>('list');
-  protected readonly activeContacts = computed(
-    () => this.contacts.filter((contact) => contact.locationActive).length,
-  );
+  protected readonly busy = signal(false);
+  protected readonly loading = signal(true);
+  protected readonly error = signal<string | null>(null);
+  protected readonly received = computed(() => this.requests().filter((r) => !r.soySolicitante));
+  protected readonly sent = computed(() => this.requests().filter((r) => r.soySolicitante));
   protected readonly filteredContacts = computed(() => {
-    const search = this.searchTerm().trim().toLocaleLowerCase('es');
-    const group = this.selectedGroup();
-    const status = this.selectedStatus();
-
-    return this.contacts.filter((contact) => {
-      const matchesSearch =
-        !search ||
-        contact.name.toLocaleLowerCase('es').includes(search) ||
-        contact.address.toLocaleLowerCase('es').includes(search);
-      const matchesGroup = group === 'Todos' || contact.group === group;
-      const matchesStatus = status === 'all' || contact.status === status;
-
-      return matchesSearch && matchesGroup && matchesStatus;
-    });
+    const term = this.searchTerm().trim().toLocaleLowerCase('es');
+    return this.contacts().filter((record) =>
+      `${record.contacto.nombres} ${record.contacto.apellidos}`.toLocaleLowerCase('es').includes(term),
+    );
   });
 
+  constructor() {
+    void this.refresh();
+    effect(() => {
+      if (this.locations.notificationVersion() > 0) void this.refresh();
+    });
+    this.destroyRef.onDestroy(() => {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      this.searchGeneration++;
+    });
+  }
+
+  protected name(user: PublicUser): string {
+    return `${user.nombres} ${user.apellidos}`;
+  }
+
+  protected isKnown(user: PublicUser): boolean {
+    return [...this.contacts(), ...this.requests()].some(
+      (record) => record.contacto.idUsuario === user.idUsuario,
+    );
+  }
+
   protected updateSearch(event: Event): void {
-    this.searchTerm.set((event.currentTarget as HTMLInputElement).value);
+    const term = (event.target as HTMLInputElement).value;
+    this.searchTerm.set(term);
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    const generation = ++this.searchGeneration;
+    if (term.trim().length < 2) {
+      this.results.set([]);
+      return;
+    }
+    this.searchTimer = setTimeout(async () => {
+      try {
+        const results = await firstValueFrom(this.api.search(term.trim()));
+        if (generation === this.searchGeneration) this.results.set(results);
+      } catch {
+        if (generation === this.searchGeneration) this.error.set('No se pudo buscar usuarios.');
+      }
+    }, 300);
   }
 
-  protected selectGroup(group: GroupFilter): void {
-    this.selectedGroup.set(group);
+  protected async refresh(): Promise<void> {
+    this.loading.set(true);
+    try {
+      const [contacts, requests] = await Promise.all([
+        firstValueFrom(this.api.list()),
+        firstValueFrom(this.api.requests()),
+      ]);
+      this.contacts.set(contacts);
+      this.requests.set(requests);
+      this.error.set(null);
+    } catch {
+      this.error.set('No se pudieron cargar los contactos.');
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  protected selectStatus(event: Event): void {
-    this.selectedStatus.set((event.currentTarget as HTMLSelectElement).value as StatusFilter);
+  protected async send(user: PublicUser): Promise<void> {
+    await this.act(() => firstValueFrom(this.api.request(user.idUsuario)));
   }
 
-  protected setViewMode(mode: ViewMode): void {
-    this.viewMode.set(mode);
+  protected async respond(record: ContactRecord, action: 'accept' | 'reject' | 'cancel'): Promise<void> {
+    await this.act(() => firstValueFrom(this.api.respond(record.idUsuarioContacto, action)));
+  }
+
+  protected async toggleSharing(record: ContactRecord): Promise<void> {
+    await this.act(() => firstValueFrom(this.api.share(record.idUsuarioContacto, !record.yoCompartoUbicacion)));
+    void this.locations.refresh();
+  }
+
+  protected async remove(record: ContactRecord): Promise<void> {
+    if (!globalThis.confirm(`¿Eliminar a ${this.name(record.contacto)} de tus contactos?`)) return;
+    await this.act(() => firstValueFrom(this.api.remove(record.idUsuarioContacto)));
+    void this.locations.refresh();
+  }
+
+  private async act(action: () => Promise<unknown>): Promise<void> {
+    if (this.busy()) return;
+    this.busy.set(true);
+    try {
+      await action();
+      await this.refresh();
+    } catch (error) {
+      this.error.set(
+        error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
+          ? error.error.message
+          : 'No se pudo completar la acción. Inténtalo de nuevo.',
+      );
+    } finally {
+      this.busy.set(false);
+    }
   }
 }

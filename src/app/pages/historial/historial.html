@@ -1,136 +1,54 @@
 <section class="history-page" aria-labelledby="history-title">
-  <header class="page-heading">
-    <div>
-      <p class="eyebrow">Actividad de ubicación</p>
-      <h1 id="history-title">Historial de ubicaciones</h1>
-      <p class="intro">Registro de los últimos 30 días</p>
-    </div>
-    <button class="export-button" type="button" (click)="exportData()">
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path
-          d="M12 4v11m0 0 4-4m-4 4-4-4M5 18.5h14"
-          stroke="currentColor"
-          stroke-width="1.7"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-      </svg>
-      Exportar datos
-    </button>
+  <header class="page-heading"><div><p class="eyebrow">Actividad de ubicación</p>
+    <h1 id="history-title">Historial de ubicaciones</h1>
+    <p class="intro">Coordenadas registradas por tus dispositivos</p></div>
+    <button class="export-button" type="button" [disabled]="!points().length" (click)="exportData()">Exportar CSV</button>
   </header>
-
-  <div class="period-filters" role="group" aria-label="Seleccionar periodo del historial">
-    <button
-      type="button"
-      [class.is-active]="selectedPeriod() === 'today'"
-      [attr.aria-pressed]="selectedPeriod() === 'today'"
-      (click)="selectPeriod('today')"
-    >
-      Hoy
-    </button>
-    <button
-      type="button"
-      [class.is-active]="selectedPeriod() === 'yesterday'"
-      [attr.aria-pressed]="selectedPeriod() === 'yesterday'"
-      (click)="selectPeriod('yesterday')"
-    >
-      Ayer
-    </button>
-    <button
-      type="button"
-      [class.is-active]="selectedPeriod() === 'week'"
-      [attr.aria-pressed]="selectedPeriod() === 'week'"
-      (click)="selectPeriod('week')"
-    >
-      Esta semana
-    </button>
-    <button
-      type="button"
-      [class.is-active]="selectedPeriod() === 'month'"
-      [attr.aria-pressed]="selectedPeriod() === 'month'"
-      (click)="selectPeriod('month')"
-    >
-      Este mes
-    </button>
-    <label class="date-filter" [class.is-active]="selectedPeriod() === 'custom'">
-      <span class="sr-only">Seleccionar una fecha</span>
-      <input type="date" [value]="selectedDate()" (change)="selectDate($event)" />
-    </label>
-  </div>
-
-  <div class="history-layout">
-    <aside class="timeline-panel" aria-labelledby="timeline-title">
-      <h2 id="timeline-title">Línea de tiempo</h2>
-      <ol>
-        @for (point of history().points; track point.time + point.location; let first = $first) {
-          <li [class.is-current]="first">
-            <time>{{ point.time }}</time>
-            <span class="timeline-dot" aria-hidden="true"></span>
-            <div>
-              <h3>{{ point.location }}</h3>
-              <p>{{ point.activity }} <span>·</span> {{ point.accuracy }}</p>
-            </div>
-          </li>
+  @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="refresh()">Reintentar</button></p> }
+  @if (loading()) { <p role="status">Cargando historial…</p> }
+  @if (assignments().length) {
+    <label>Dispositivo
+      <select [value]="selectedId()" (change)="selectAssignment($event)">
+        @for (assignment of assignments(); track assignment.idUsuarioDispositivo) {
+          <option [value]="assignment.idUsuarioDispositivo">{{ assignment.alias || assignment.dispositivo?.codigoDispositivo || assignment.idUsuarioDispositivo }}</option>
         }
+      </select>
+    </label>
+    <div class="period-filters" role="group" aria-label="Seleccionar periodo del historial">
+      <button type="button" [attr.aria-pressed]="period() === 'today'" (click)="selectPeriod('today')">Hoy</button>
+      <button type="button" [attr.aria-pressed]="period() === 'yesterday'" (click)="selectPeriod('yesterday')">Ayer</button>
+      <button type="button" [attr.aria-pressed]="period() === 'week'" (click)="selectPeriod('week')">Esta semana</button>
+      <button type="button" [attr.aria-pressed]="period() === 'month'" (click)="selectPeriod('month')">Este mes</button>
+      <label class="date-filter">Fecha <input type="date" [value]="date()" (change)="selectDate($event)" /></label>
+    </div>
+    <div class="history-layout"><section class="timeline-panel" aria-labelledby="timeline-title">
+      <h2 id="timeline-title">{{ points().length }} ubicaciones</h2>
+      <ol>
+        @for (point of points(); track point.idUbicacion) {
+          <li><time [attr.datetime]="point.fechaHoraDispositivo">{{ point.fechaHoraDispositivo | date: 'shortTime' }}</time>
+            <span class="timeline-dot" aria-hidden="true"></span>
+            <div><h3>{{ point.latitud }}, {{ point.longitud }}</h3>
+              <p>Precisión: {{ point.precisionGps ?? 'No disponible' }} m</p></div>
+          </li>
+        } @empty { @if (!loading()) { <li>No hay ubicaciones registradas en este periodo.</li> } }
       </ol>
-    </aside>
-
+    </section>
     <div class="route-column">
       <figure class="route-map">
-        <figcaption>Recorrido del periodo · {{ history().points.length }} puntos</figcaption>
-        <svg
-          viewBox="0 0 110 100"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label="Representación del recorrido registrado"
-        >
-          <polyline
-            [attr.points]="routePoints()"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="0.65"
-            stroke-dasharray="2 1.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          @for (point of history().points; track point.time + point.location; let first = $first) {
-            @if (first) {
-              <circle
-                [attr.cx]="point.mapX"
-                [attr.cy]="point.mapY"
-                r="3.2"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="0.45"
-              />
+        <figcaption>Recorrido del periodo · {{ points().length }} puntos</figcaption>
+        @if (points().length) {
+          <svg viewBox="0 0 110 100" preserveAspectRatio="none" role="img" aria-label="Esquema del recorrido basado en coordenadas registradas">
+            <polyline [attr.points]="routePoints()" fill="none" stroke="currentColor" stroke-width="0.65" stroke-dasharray="2 1.2" stroke-linecap="round" stroke-linejoin="round" />
+            @for (point of route(); track point.id; let first = $first) {
+              <circle [attr.cx]="point.x" [attr.cy]="point.y" [attr.r]="first ? 1.9 : 1.4" [attr.class]="first ? 'route-current' : 'route-point'" />
             }
-            <circle
-              [attr.cx]="point.mapX"
-              [attr.cy]="point.mapY"
-              [attr.r]="first ? 1.9 : 1.45"
-              [attr.class]="first ? 'route-current' : 'route-point'"
-            />
-          }
-        </svg>
+          </svg>
+        } @else { <p class="route-empty">No hay puntos para dibujar el recorrido.</p> }
       </figure>
-
-      <section class="metrics" aria-label="Resumen del recorrido">
-        <article>
-          <span class="metric-icon distance" aria-hidden="true">⌖</span>
-          <strong>{{ history().distance }}</strong>
-          <p>Distancia total</p>
-        </article>
-        <article>
-          <span class="metric-icon time" aria-hidden="true">◷</span>
-          <strong>{{ history().activeTime }}</strong>
-          <p>Tiempo activo</p>
-        </article>
-        <article>
-          <span class="metric-icon points" aria-hidden="true">⌘</span>
-          <strong>{{ history().points.length }} puntos</strong>
-          <p>Ubicaciones</p>
-        </article>
-      </section>
-    </div>
-  </div>
+      <div class="metrics" aria-label="Resumen del recorrido">
+        <article><strong>{{ distanceKm() }} km</strong><p>Distancia aproximada</p></article>
+        <article><strong>{{ points().length }}</strong><p>Ubicaciones registradas</p></article>
+      </div>
+    </div></div>
+  } @else if (!loading()) { <p>No tienes dispositivos vinculados.</p> }
 </section>

@@ -1,30 +1,42 @@
 :root {
-  --bg: #0b0e14;
-  --bg-elevated: #121722;
-  --surface: #1a1f2b;
-  --surface-2: #161b22;
-  --surface-hover: #222838;
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.14);
+  color-scheme: dark;
+  // Aproximación de la paleta del prototipo: noche azul, cian y estados semánticos.
+  --bg: #090d18;
+  --bg-elevated: #10182c;
+  --surface: #141d35;
+  --surface-2: #0d1426;
+  --surface-hover: #1c2944;
+  --sidebar-bg: #060b16;
+  --header-bg: #10182c;
+  --map-bg: #0c1426;
+  --map-block: #14213a;
+  --border: rgba(113, 150, 216, 0.22);
+  --border-strong: rgba(133, 166, 224, 0.36);
 
   --primary: #00d1ff;
   --primary-strong: #00d2ff;
-  --primary-soft: rgba(0, 209, 255, 0.12);
-  --emergency: #ff4d4d;
-  --emergency-soft: rgba(255, 77, 77, 0.16);
-  --success: #4ade80;
-  --success-alt: #4caf50;
-  --warning: #ff9800;
-  --away: #f5c542;
+  --primary-soft: rgba(0, 209, 255, 0.13);
+  --emergency: #ff5966;
+  --emergency-action: #c92f40;
+  --emergency-soft: rgba(255, 89, 102, 0.14);
+  --success: #23dc73;
+  --success-alt: #1fb968;
+  --warning: #ffad0a;
+  --away: #ffc044;
+  --violet: #7868f9;
+  --offline: #8195b7;
 
-  --text: #ffffff;
-  --text-muted: #a0a0a0;
-  --text-dim: #7a8194;
+  --text: #f4f7ff;
+  --text-muted: #b3c5e1;
+  --text-dim: #94a8c8;
 
   --radius: 12px;
   --radius-lg: 16px;
   --radius-pill: 999px;
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
   --sidebar-width: 220px;
   --header-height: 64px;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow: 0 8px 24px rgba(1, 5, 15, 0.28);
 }

@@ -1,13 +1,15 @@
-import { Component, DestroyRef, inject } from '@angular/core';
+import { Component, DestroyRef, computed, inject } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { SessionStore } from '../../core/auth/session-store';
+import { LocationsStore } from '../../core/locations/locations-store';
+import { OverviewStore } from '../../core/overview/overview-store';
 import { LayoutMode } from '../../layout/layout-mode';
 import { LiveMap } from '../../shared/live-map/live-map';
-import { DASHBOARD_ACTIVITY, DASHBOARD_CONTACTS } from './dashboard.data';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, LiveMap],
+  imports: [RouterLink, LiveMap, DatePipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss',
 })
@@ -16,8 +18,10 @@ export class Dashboard {
   private readonly layout = inject(LayoutMode);
   protected readonly isAuthenticated = inject(SessionStore).isAuthenticated;
 
-  protected readonly contacts = DASHBOARD_CONTACTS;
-  protected readonly activity = DASHBOARD_ACTIVITY;
+  protected readonly locationStore = inject(LocationsStore);
+  protected readonly overview = inject(OverviewStore);
+  protected readonly locations = this.locationStore.locations;
+  protected readonly activeEmergency = computed(() => this.overview.emergencies()[0] ?? null);
   protected readonly mapExpanded = this.layout.mapExpanded;
 
   constructor() {

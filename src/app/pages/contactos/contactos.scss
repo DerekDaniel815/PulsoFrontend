@@ -3,7 +3,7 @@
 }
 .contacts-page {
   display: grid;
-  gap: 18px;
+  gap: var(--space-3);
   width: 100%;
   max-width: 1480px;
   margin: 0 auto;
@@ -112,7 +112,7 @@ h1 {
 }
 .group-filters button.is-active,
 .view-switcher button.is-active {
-  border-color: rgba(0, 209, 255, 0.38);
+  border-color: color-mix(in srgb, var(--primary) 38%, transparent);
   color: var(--primary);
   background: var(--primary-soft);
 }
@@ -166,10 +166,7 @@ select:focus-visible {
 .table-head,
 .contact-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.5fr) minmax(115px, 0.9fr) minmax(135px, 1fr) minmax(
-      130px,
-      1fr
-    ) 90px 105px 178px;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.8fr) minmax(120px, 0.8fr) minmax(270px, 1.6fr);
   align-items: center;
   gap: 12px;
 }
@@ -236,16 +233,16 @@ select:focus-visible {
   font-weight: 700;
 }
 .group-emergencias {
-  color: #ff7373;
+  color: var(--emergency);
   background: var(--emergency-soft);
 }
 .group-equipo {
-  color: #ffb13b;
-  background: rgba(255, 152, 0, 0.12);
+  color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
 }
 .group-familia {
-  color: #a995ff;
-  background: rgba(140, 112, 255, 0.12);
+  color: #a99eff;
+  background: color-mix(in srgb, var(--violet) 16%, transparent);
 }
 .contact-status,
 .location-state {
@@ -279,6 +276,7 @@ select:focus-visible {
 }
 .actions {
   gap: 6px;
+  flex-wrap: wrap;
 }
 .actions a,
 .actions button {
@@ -293,12 +291,12 @@ select:focus-visible {
   display: inline-flex;
   align-items: center;
   color: var(--primary);
-  border-color: rgba(0, 209, 255, 0.28);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
   background: var(--primary-soft);
 }
 .actions button {
   color: var(--text-muted);
-  background: #202a47;
+  background: var(--surface-hover);
   cursor: pointer;
 }
 .empty-state {
@@ -361,7 +359,7 @@ select:focus-visible {
   }
   .contacts-table:not(.is-grid) .table-head,
   .contacts-table:not(.is-grid) .contact-row {
-    min-width: 1080px;
+    min-width: 800px;
   }
   .is-grid .table-body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -396,4 +394,47 @@ select:focus-visible {
   .is-grid .table-body {
     grid-template-columns: 1fr;
   }
+}
+
+.contact-panel {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.contact-panel h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.request-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.request-row > span:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.request-row small,
+.request-note,
+.request-empty {
+  color: var(--text-muted);
+}
+
+.request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.request-empty {
+  margin: 0;
 }

@@ -209,7 +209,7 @@ input[aria-invalid='true'] {
   padding: 10px 12px;
   color: #ffb0b0;
   background: var(--emergency-soft);
-  border: 1px solid rgba(255, 77, 77, 0.28);
+  border: 1px solid color-mix(in srgb, var(--emergency) 28%, transparent);
   border-radius: 10px;
   font-size: 12px;
 }
