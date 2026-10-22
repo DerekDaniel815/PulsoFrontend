@@ -35,6 +35,12 @@ export class LiveMap {
   protected readonly locations = inject(LocationsStore);
 
   readonly overlayLayout = input(false);
+  readonly selectedUserId = input<number | null>(null);
+  private mapInstance: google.maps.Map | null = null;
+  private fittedUserId: number | null = null;
+  private fittedWithOwn = false;
+  private lastSelectedUserId: number | null = null;
+  private readonly ownPosition = signal<google.maps.LatLngLiteral | null>(null);
 
   protected readonly ready = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -65,9 +71,22 @@ export class LiveMap {
       this.locations.locations();
       this.publicLocations();
       this.session.isAuthenticated();
+      const userId = this.selectedUserId();
+      if (userId !== this.lastSelectedUserId) {
+        this.lastSelectedUserId = userId;
+        this.fittedUserId = null;
+        this.fittedWithOwn = false;
+      }
       if (this.ready()) {
         this.updateMarkers();
       }
+    });
+    effect(() => {
+      this.selectedUserId();
+      this.locations.locations();
+      this.ownPosition();
+      this.locating();
+      this.focusSelected();
     });
     effect(() => {
       if (this.session.isAuthenticated()) {
@@ -117,22 +136,27 @@ export class LiveMap {
     const geolocation = globalThis.navigator?.geolocation;
     if (!geolocation) {
       this.locating.set(false);
+      this.ownPosition.set(null);
       this.locationMessage.set('La geolocalización no está disponible en este navegador.');
       this.updateMarkers();
       return;
     }
 
     this.locating.set(true);
+    this.ownPosition.set(null);
     this.locationMessage.set(null);
     geolocation.getCurrentPosition(
       ({ coords }) => {
-        this.center.set({ lat: coords.latitude, lng: coords.longitude });
+        const position = { lat: coords.latitude, lng: coords.longitude };
+        this.ownPosition.set(position);
+        if (this.selectedUserId() === null) this.center.set(position);
         this.locating.set(false);
         this.locationMessage.set(null);
-        this.updateMarkers(this.center());
+        this.updateMarkers();
       },
       () => {
         this.locating.set(false);
+        this.ownPosition.set(null);
         this.locationMessage.set('No pudimos acceder a tu ubicación. Puedes habilitar el permiso y reintentar.');
         this.updateMarkers();
       },
@@ -140,12 +164,42 @@ export class LiveMap {
     );
   }
 
-  private updateMarkers(currentPosition?: google.maps.LatLngLiteral): void {
+  protected onMapInitialized(map: google.maps.Map): void {
+    this.mapInstance = map;
+    this.focusSelected();
+  }
+
+  private focusSelected(): void {
+    const userId = this.selectedUserId();
+    const own = this.ownPosition();
+    if (userId === null || !this.mapInstance || (this.fittedUserId === userId && (!own || this.fittedWithOwn))) return;
+    const contactLocations = this.locations.locations().filter((item) => item.assignment.idUsuario === userId);
+    if (contactLocations.length === 0) return;
+
+    const positions = contactLocations.map((item) => ({ lat: item.location.latitud, lng: item.location.longitud }));
+    if (own) positions.push(own);
+    if (positions.length === 1) {
+      this.mapInstance.setCenter(positions[0]);
+      this.mapInstance.setZoom(15);
+    } else {
+      const bounds = new google.maps.LatLngBounds();
+      for (const position of positions) bounds.extend(position);
+      this.mapInstance.fitBounds(bounds, 72);
+    }
+    this.fittedUserId = userId;
+    this.fittedWithOwn = !!own;
+  }
+
+  private updateMarkers(): void {
     if (!globalThis.google?.maps) {
       return;
     }
 
-    const privatePoints: MapPoint[] = this.locations.locations().map((item) => ({
+    const selectedUserId = this.selectedUserId();
+    const visibleLocations = selectedUserId === null
+      ? this.locations.locations()
+      : this.locations.locations().filter((item) => item.assignment.idUsuario === selectedUserId);
+    const privatePoints: MapPoint[] = visibleLocations.map((item) => ({
       id: String(item.assignment.idUsuarioDispositivo),
       title: item.assignment.alias || item.assignment.codigoDispositivo,
       initials: 'GPS',
@@ -161,6 +215,7 @@ export class LiveMap {
     }));
     const points = this.session.isAuthenticated() ? privatePoints : publicPoints;
 
+    const currentPosition = this.ownPosition();
     if (currentPosition) {
       points.unshift({
         id: 'tu',
@@ -168,14 +223,6 @@ export class LiveMap {
         initials: 'TÚ',
         status: 'yo',
         position: currentPosition,
-      });
-    } else if (this.center() !== MAP_CENTER) {
-      points.unshift({
-        id: 'tu',
-        title: 'Tu ubicación actual',
-        initials: 'TÚ',
-        status: 'yo',
-        position: this.center(),
       });
     }
 

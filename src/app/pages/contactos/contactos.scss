@@ -26,6 +26,11 @@
   justify-content: space-between;
   gap: 24px;
 }
+.heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .eyebrow {
   margin: 0 0 3px;
   color: var(--primary);
@@ -48,7 +53,8 @@ h1 {
   margin-bottom: 0;
   color: var(--text-muted);
 }
-.add-contact {
+.add-contact,
+.refresh-contact {
   justify-content: center;
   gap: 8px;
   min-height: 42px;
@@ -61,8 +67,17 @@ h1 {
   font-weight: 700;
   cursor: pointer;
 }
+.refresh-contact {
+  display: inline-flex;
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--bg-elevated);
+}
 .add-contact:hover {
   filter: brightness(1.08);
+}
+.refresh-contact:hover {
+  background: var(--surface-hover);
 }
 .add-contact svg {
   width: 16px;
@@ -372,6 +387,9 @@ select:focus-visible {
     flex-direction: column;
   }
   .add-contact {
+    flex: 1;
+  }
+  .heading-actions {
     width: 100%;
   }
   .search-box {
@@ -466,6 +484,49 @@ select:focus-visible {
 .contact-panel h2 {
   margin: 0 0 12px;
   font-size: 1rem;
+}
+.add-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.add-panel-heading p {
+  margin: 0 0 16px;
+  color: var(--text-muted);
+}
+.add-panel .search-box {
+  display: block;
+  width: fit-content;
+  min-height: 0;
+  margin-bottom: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.user-search {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--bg-elevated);
+}
+.close-add,
+.add-panel .request-row button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  cursor: pointer;
+}
+.add-panel .request-row button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .request-row {

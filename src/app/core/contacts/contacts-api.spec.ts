@@ -22,6 +22,19 @@ describe('ContactsApi', () => {
     http.expectOne((request) => request.url.endsWith('/contacts/requests') && request.method === 'GET').flush([]);
   });
 
+  it('searches users and sends a contact request using the API', () => {
+    api.search('Ana').subscribe();
+    const search = http.expectOne((request) => request.url.endsWith('/users/search'));
+    expect(search.request.method).toBe('GET');
+    expect(search.request.params.get('q')).toBe('Ana');
+    search.flush([]);
+
+    api.request(21).subscribe();
+    const request = http.expectOne((item) => item.url.endsWith('/contacts/requests') && item.method === 'POST');
+    expect(request.request.body).toEqual({ idUsuarioDestino: 21 });
+    request.flush({});
+  });
+
   it('sends directional sharing with the documented body', () => {
     api.share(5, true).subscribe();
     const request = http.expectOne((item) => item.url.endsWith('/contacts/5/location-sharing'));
