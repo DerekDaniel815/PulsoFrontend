@@ -1,5 +1,6 @@
 @if (ready()) {
-  <google-map height="100%" width="100%" [center]="center()" [zoom]="zoom" [options]="options()">
+  <google-map height="100%" width="100%" [center]="center()" [zoom]="zoom" [options]="options()"
+    (mapInitialized)="onMapInitialized($event)">
     @for (marker of markers(); track marker.id) {
       <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options" />
     }

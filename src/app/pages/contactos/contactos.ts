@@ -1,4 +1,4 @@
-import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -15,12 +15,19 @@ export class Contactos {
   private readonly api = inject(ContactsApi);
   private readonly locations = inject(LocationsStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly userSearchInput = viewChild<ElementRef<HTMLInputElement>>('userSearchInput');
+  private readonly addButton = viewChild.required<ElementRef<HTMLButtonElement>>('addButton');
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private searchGeneration = 0;
   protected readonly contacts = signal<ContactRecord[]>([]);
   protected readonly requests = signal<ContactRecord[]>([]);
   protected readonly results = signal<PublicUser[]>([]);
   protected readonly searchTerm = signal('');
+  protected readonly userSearchTerm = signal('');
+  protected readonly addOpen = signal(false);
+  protected readonly searching = signal(false);
+  protected readonly searchError = signal(false);
+  protected readonly sentMessage = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly loading = signal(true);
   protected readonly error = signal<string | null>(null);
@@ -38,9 +45,9 @@ export class Contactos {
     effect(() => {
       if (this.locations.notificationVersion() > 0) void this.refresh();
     });
+    effect(() => this.userSearchInput()?.nativeElement.focus());
     this.destroyRef.onDestroy(() => {
-      if (this.searchTimer) clearTimeout(this.searchTimer);
-      this.searchGeneration++;
+      this.cancelSearch();
     });
   }
 
@@ -55,20 +62,51 @@ export class Contactos {
   }
 
   protected updateSearch(event: Event): void {
-    const term = (event.target as HTMLInputElement).value;
-    this.searchTerm.set(term);
+    this.searchTerm.set((event.target as HTMLInputElement).value);
+  }
+
+  protected openAdd(): void {
+    this.addOpen.set(true);
+  }
+
+  protected closeAdd(): void {
+    this.addButton().nativeElement.focus();
+    this.addOpen.set(false);
+    this.cancelSearch();
+    this.userSearchTerm.set('');
+    this.results.set([]);
+    this.searchError.set(false);
+    this.sentMessage.set(null);
+    this.searching.set(false);
+  }
+
+  private cancelSearch(): void {
     if (this.searchTimer) clearTimeout(this.searchTimer);
-    const generation = ++this.searchGeneration;
+    this.searchTimer = null;
+    this.searchGeneration++;
+  }
+
+  protected updateUserSearch(event: Event): void {
+    const term = (event.target as HTMLInputElement).value;
+    this.userSearchTerm.set(term);
+    this.results.set([]);
+    this.searchError.set(false);
+    this.sentMessage.set(null);
+    this.searching.set(false);
+    this.cancelSearch();
     if (term.trim().length < 2) {
-      this.results.set([]);
       return;
     }
+    const generation = this.searchGeneration;
+    this.searching.set(true);
     this.searchTimer = setTimeout(async () => {
       try {
         const results = await firstValueFrom(this.api.search(term.trim()));
         if (generation === this.searchGeneration) this.results.set(results);
       } catch {
-        if (generation === this.searchGeneration) this.error.set('No se pudo buscar usuarios.');
+        if (generation === this.searchGeneration) this.searchError.set(true);
+      } finally {
+        if (generation === this.searchGeneration) this.searching.set(false);
       }
     }, 300);
   }
@@ -91,7 +129,10 @@ export class Contactos {
   }
 
   protected async send(user: PublicUser): Promise<void> {
-    await this.act(() => firstValueFrom(this.api.request(user.idUsuario)));
+    if (this.isKnown(user)) return;
+    if (await this.act(() => firstValueFrom(this.api.request(user.idUsuario)))) {
+      this.sentMessage.set(`Solicitud enviada a ${this.name(user)}.`);
+    }
   }
 
   protected async respond(record: ContactRecord, action: 'accept' | 'reject' | 'cancel'): Promise<void> {
@@ -109,18 +150,20 @@ export class Contactos {
     void this.locations.refresh();
   }
 
-  private async act(action: () => Promise<unknown>): Promise<void> {
-    if (this.busy()) return;
+  private async act(action: () => Promise<unknown>): Promise<boolean> {
+    if (this.busy()) return false;
     this.busy.set(true);
     try {
       await action();
       await this.refresh();
+      return true;
     } catch (error) {
       this.error.set(
         error instanceof HttpErrorResponse && typeof error.error?.message === 'string'
           ? error.error.message
           : 'No se pudo completar la acción. Inténtalo de nuevo.',
       );
+      return false;
     } finally {
       this.busy.set(false);
     }
