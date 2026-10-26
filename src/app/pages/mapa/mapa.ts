@@ -1,5 +1,6 @@
-import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { LocationsStore } from '../../core/locations/locations-store';
 import { LiveMap } from '../../shared/live-map/live-map';
 
@@ -15,14 +16,24 @@ import { LiveMap } from '../../shared/live-map/live-map';
         </span>
       </header>
       <div class="map-canvas">
-        <app-live-map />
+        <app-live-map [selectedUserId]="selectedUserId()" />
         <div class="map-label"><span aria-hidden="true">●</span> Vista ciudad · Tiempo real</div>
         <div class="map-legend" aria-label="Leyenda del mapa">
           <span><i class="connected" aria-hidden="true"></i> Ubicación visible</span>
           <span><i class="emergency" aria-hidden="true"></i> Emergencia</span>
         </div>
       </div>
-      <p class="map-help">Solo aparecen ubicaciones que el servidor te permite ver. <a routerLink="/contactos">Gestionar contactos</a></p>
+      @if (selectedUserId()) {
+        @if (refreshing() && selectedLocations().length === 0) {
+          <p class="map-help" role="status">Comprobando la ubicación compartida del contacto…</p>
+        } @else if (selectedLocations().length === 0 && !locations.error()) {
+          <p class="map-help" role="status">No hay una ubicación visible de este contacto por ahora. Debe compartirla contigo y mantener su ubicación activa.</p>
+        } @else {
+          <p class="map-help">Mostrando tu ubicación y la del contacto. Si no aparece tu marcador, permite el acceso a la ubicación del navegador.</p>
+        }
+      } @else {
+        <p class="map-help">Solo aparecen ubicaciones que el servidor te permite ver. <a routerLink="/contactos">Gestionar contactos</a></p>
+      }
     </section>
   `,
   styles: [`
@@ -48,4 +59,20 @@ import { LiveMap } from '../../shared/live-map/live-map';
 })
 export class Mapa {
   protected readonly locations = inject(LocationsStore);
+  private readonly route = inject(ActivatedRoute);
+  private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
+  protected readonly selectedUserId = computed(() => {
+    const raw = this.params().get('usuario');
+    if (!raw || !/^[1-9]\d*$/.test(raw)) return null;
+    const id = Number(raw);
+    return Number.isSafeInteger(id) ? id : null;
+  });
+  protected readonly selectedLocations = computed(() =>
+    this.locations.locations().filter((item) => item.assignment.idUsuario === this.selectedUserId()),
+  );
+  protected readonly refreshing = signal(true);
+
+  constructor() {
+    void this.locations.refresh().finally(() => this.refreshing.set(false));
+  }
 }

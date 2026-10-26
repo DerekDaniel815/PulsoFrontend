@@ -5,7 +5,11 @@
       <h1 id="contacts-title">Contactos</h1>
       <p class="intro">{{ contacts().length }} contactos aceptados</p>
     </div>
-    <button class="add-contact" type="button" (click)="refresh()">Actualizar</button>
+    <div class="heading-actions">
+      <button class="refresh-contact" type="button" (click)="refresh()">Actualizar</button>
+      <button #addButton class="add-contact" type="button" [attr.aria-controls]="addOpen() ? 'add-contact-panel' : null"
+        [attr.aria-expanded]="addOpen()" (click)="openAdd()">Agregar contacto</button>
+    </div>
   </header>
 
   @if (error()) {
@@ -15,20 +19,36 @@
 
   <div class="toolbar">
     <label class="search-box">
-      <span class="sr-only">Buscar contacto o usuario</span>
-      <input type="search" placeholder="Buscar contacto o usuario…" [value]="searchTerm()" (input)="updateSearch($event)" />
+      <span class="sr-only">Filtrar contactos aceptados</span>
+      <input type="search" placeholder="Buscar entre tus contactos…" [value]="searchTerm()" (input)="updateSearch($event)" />
     </label>
   </div>
 
-  @if (searchTerm().trim().length >= 2) {
-    <section class="contact-panel" aria-label="Resultados de búsqueda">
-      <h2>Personas</h2>
-      @for (user of results(); track user.idUsuario) {
-        <div class="request-row"><span><strong>{{ name(user) }}</strong><small>{{ user.correo }}</small></span>
-          @if (isKnown(user)) { <span class="request-note">Contacto o solicitud existente</span> }
-          @else { <button type="button" [disabled]="busy()" (click)="send(user)">Enviar solicitud</button> }
+  @if (addOpen()) {
+    <section id="add-contact-panel" class="contact-panel add-panel" aria-labelledby="add-contact-title">
+      <div class="add-panel-heading">
+        <div>
+          <h2 id="add-contact-title">Agregar contacto</h2>
+          <p>Busca a una persona para enviarle una solicitud de contacto.</p>
         </div>
-      } @empty { <p class="empty-state">No hay resultados para esta búsqueda.</p> }
+        <button class="close-add" type="button" (click)="closeAdd()">Cerrar</button>
+      </div>
+      <label class="search-box" for="user-search">Buscar usuario por nombre o correo</label>
+      <input #userSearchInput id="user-search" class="user-search" type="search" autocomplete="off"
+        placeholder="Escribe al menos 2 caracteres…" [value]="userSearchTerm()" (input)="updateUserSearch($event)" />
+      @if (searching()) { <p role="status">Buscando usuarios…</p> }
+      @if (searchError()) { <p role="alert">No se pudieron buscar usuarios. Inténtalo de nuevo.</p> }
+      @if (sentMessage()) { <p role="status">{{ sentMessage() }}</p> }
+      @if (userSearchTerm().trim().length >= 2 && !searching() && !searchError()) {
+        <div role="region" aria-label="Resultados de búsqueda">
+          @for (user of results(); track user.idUsuario) {
+            <div class="request-row"><span><strong>{{ name(user) }}</strong><small>{{ user.correo }}</small></span>
+              @if (isKnown(user)) { <span class="request-note">Contacto o solicitud existente</span> }
+              @else { <button type="button" [disabled]="busy()" (click)="send(user)">Enviar solicitud</button> }
+            </div>
+          } @empty { <p class="empty-state">No hay resultados para esta búsqueda.</p> }
+        </div>
+      }
     </section>
   }
 
@@ -51,7 +71,7 @@
               <button type="button" [disabled]="busy()" (click)="toggleSharing(record)">
                 {{ record.yoCompartoUbicacion ? 'Dejar de compartir' : 'Compartir mi ubicación' }}
               </button>
-              <a routerLink="/mapa">Ver mapa</a>
+              <a routerLink="/mapa" [queryParams]="{ usuario: record.contacto.idUsuario }">Ver ubicación</a>
               <button type="button" [disabled]="busy()" (click)="remove(record)">Eliminar</button>
             </div>
           </article>
