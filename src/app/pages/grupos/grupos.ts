@@ -1,9 +1,16 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
 import { SessionStore } from '../../core/auth/session-store';
 import { ContactsApi, PublicUser } from '../../core/contacts/contacts-api';
+import { LocationsStore } from '../../core/locations/locations-store';
+
+interface GroupMember {
+  idGrupoUsuario: number;
+  usuario: { idUsuario: number; nombres: string; apellidos: string };
+  rol: string;
+}
 
 interface Group {
   idGrupo: number;
@@ -11,7 +18,7 @@ interface Group {
   nombre: string;
   descripcion: string | null;
   estado: boolean;
-  miembros?: { idGrupoUsuario: number; usuario: { idUsuario: number; nombres: string; apellidos: string }; rol: string }[];
+  miembros?: GroupMember[];
 }
 
 interface Assignment {
@@ -38,7 +45,10 @@ interface Invitation {
 export class Grupos {
   private readonly http = inject(HttpClient);
   private readonly contactsApi = inject(ContactsApi);
-  private readonly session = inject(SessionStore);
+  protected readonly session = inject(SessionStore);
+  private readonly locations = inject(LocationsStore);
+  private refreshGeneration = 0;
+  private memberRequestGeneration = 0;
   protected readonly groups = signal<Group[]>([]);
   protected readonly assignments = signal<Assignment[]>([]);
   protected readonly selectedAssignmentId = signal<number | null>(null);
@@ -53,10 +63,20 @@ export class Grupos {
   protected readonly searchTerm = signal('');
   protected readonly searchResults = signal<PublicUser[]>([]);
   protected readonly notice = signal<string | null>(null);
+  protected readonly expandedGroupId = signal<number | null>(null);
+  protected readonly members = signal<GroupMember[]>([]);
+  protected readonly membersLoading = signal(false);
+  protected readonly membersError = signal(false);
 
-  constructor() { void this.refresh(); }
+  constructor() {
+    void this.refresh();
+    effect(() => {
+      if (this.locations.notificationVersion() > 0) void this.refresh();
+    });
+  }
 
   protected async refresh(): Promise<void> {
+    const generation = ++this.refreshGeneration;
     this.loading.set(true);
     try {
       const [groups, invitations, assignments] = await Promise.all([
@@ -64,23 +84,65 @@ export class Grupos {
         firstValueFrom(this.http.get<Invitation[]>(`${PULSO_API_URL}/groups/invitations`)),
         firstValueFrom(this.http.get<Assignment[]>(`${PULSO_API_URL}/user-devices/me`)),
       ]);
+      if (generation !== this.refreshGeneration) return;
       this.groups.set(groups);
       this.invitations.set(invitations);
       this.assignments.set(assignments);
+      const expanded = groups.find((group) => group.idGrupo === this.expandedGroupId());
+      if (expanded) {
+        this.members.set(expanded.miembros ?? []);
+        void this.loadMembers(expanded.idGrupo);
+      } else {
+        this.expandedGroupId.set(null);
+        this.members.set([]);
+      }
       if (this.selectedAssignmentId() === null && assignments.length) {
         this.selectedAssignmentId.set(assignments[0].idUsuarioDispositivo);
       }
       await this.loadSharing();
-      this.error.set(null);
+      if (generation === this.refreshGeneration) this.error.set(null);
     } catch {
-      this.error.set('No se pudieron cargar los grupos.');
+      if (generation === this.refreshGeneration) this.error.set('No se pudieron cargar los grupos.');
     } finally {
-      this.loading.set(false);
+      if (generation === this.refreshGeneration) this.loading.set(false);
     }
   }
 
   protected updateName(event: Event): void {
     this.newName.set((event.target as HTMLInputElement).value);
+  }
+
+  protected toggleMembers(group: Group): void {
+    if (this.expandedGroupId() === group.idGrupo) {
+      this.expandedGroupId.set(null);
+      this.memberRequestGeneration++;
+      return;
+    }
+    this.expandedGroupId.set(group.idGrupo);
+    this.members.set(group.miembros ?? []);
+    this.membersError.set(false);
+    void this.loadMembers(group.idGrupo);
+  }
+
+  protected async loadMembers(groupId: number): Promise<void> {
+    const generation = ++this.memberRequestGeneration;
+    this.membersLoading.set(true);
+    this.membersError.set(false);
+    try {
+      const members = await firstValueFrom(this.http.get<GroupMember[]>(`${PULSO_API_URL}/groups/${groupId}/members`));
+      if (generation === this.memberRequestGeneration && this.expandedGroupId() === groupId) {
+        this.members.set(members);
+        this.groups.update((groups) => groups.map((group) =>
+          group.idGrupo === groupId ? { ...group, miembros: members } : group,
+        ));
+      }
+    } catch {
+      if (generation === this.memberRequestGeneration && this.expandedGroupId() === groupId) {
+        this.membersError.set(true);
+      }
+    } finally {
+      if (generation === this.memberRequestGeneration) this.membersLoading.set(false);
+    }
   }
 
   protected canInvite(group: Group): boolean {
@@ -117,7 +179,7 @@ export class Grupos {
       await firstValueFrom(this.http.post(`${PULSO_API_URL}/groups/${groupId}/invitations`, {
         idUsuarioInvitado: user.idUsuario,
       }));
-      this.notice.set(`Invitación enviada a ${user.nombres} ${user.apellidos}.`);
+      this.notice.set(`Invitación enviada a ${user.nombres} ${user.apellidos}. Aparecerá como miembro cuando la acepte.`);
       this.inviteGroupId.set(null);
       this.error.set(null);
     } catch {

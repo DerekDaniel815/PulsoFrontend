@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, input, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, computed, effect, inject, input, signal, viewChild } from '@angular/core';
 import { GoogleMap, MapMarker } from '@angular/google-maps';
 import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
@@ -7,10 +7,14 @@ import { SessionStore } from '../../core/auth/session-store';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
 import { LocationsStore } from '../../core/locations/locations-store';
 import { DARK_MAP_STYLES, MAP_BACKGROUND, MAP_CENTER, MapPoint, markerOptions } from '../../core/maps/map-theme';
+import { OverviewStore } from '../../core/overview/overview-store';
 
 interface ReadyMarker {
   id: string;
   title: string;
+  deviceLabel?: string;
+  updatedAt?: string;
+  kind: 'self' | 'private' | 'public';
   position: google.maps.LatLngLiteral;
   options: google.maps.MarkerOptions;
 }
@@ -18,7 +22,7 @@ interface ReadyMarker {
 interface PublicLocation {
   clavePublica: string;
   origen: 'PUBLICO' | 'EMERGENCIA';
-  ubicacion: { latitud: number; longitud: number };
+  ubicacion: { latitud: number; longitud: number; fechaHoraDispositivo?: string };
 }
 
 @Component({
@@ -31,6 +35,10 @@ export class LiveMap {
   private readonly loader = inject(GoogleMapsLoader);
   private readonly http = inject(HttpClient);
   private readonly session = inject(SessionStore);
+  private readonly overview = inject(OverviewStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly markerAccess = viewChild<ElementRef<HTMLElement>>('markerAccess');
+  private readonly detailsTitle = viewChild<ElementRef<HTMLElement>>('detailsTitle');
   private readonly publicLocations = signal<PublicLocation[]>([]);
   protected readonly locations = inject(LocationsStore);
 
@@ -41,6 +49,11 @@ export class LiveMap {
   private fittedWithOwn = false;
   private lastSelectedUserId: number | null = null;
   private readonly ownPosition = signal<google.maps.LatLngLiteral | null>(null);
+  protected readonly canShowMap = computed(() => {
+    const userId = this.selectedUserId();
+    return userId === null || this.ownPosition() !== null ||
+      this.locations.locations().some((item) => item.assignment.idUsuario === userId);
+  });
 
   protected readonly ready = signal(false);
   protected readonly error = signal<string | null>(null);
@@ -50,9 +63,26 @@ export class LiveMap {
   protected readonly zoom = 15;
   protected readonly options = signal<google.maps.MapOptions>({});
   protected readonly markers = signal<ReadyMarker[]>([]);
+  protected readonly selectedMarkerId = signal<string | null>(null);
+  protected readonly selectedMarker = computed(() =>
+    this.markers().find((marker) => marker.id === this.selectedMarkerId()) ?? null,
+  );
+  private readonly now = signal(Date.now());
 
   constructor() {
     void this.init();
+    const clock = setInterval(() => this.now.set(Date.now()), 30_000);
+    this.destroyRef.onDestroy(() => clearInterval(clock));
+    effect(() => {
+      if (this.selectedMarkerId()) this.detailsTitle()?.nativeElement.focus();
+    });
+    effect(() => {
+      const id = this.selectedMarkerId();
+      if (id && !this.markers().some((marker) => marker.id === id)) {
+        this.selectedMarkerId.set(null);
+        this.markerAccess()?.nativeElement.focus();
+      }
+    });
     effect(() => {
       const overlay = this.overlayLayout();
       if (!this.ready() || !globalThis.google?.maps) {
@@ -71,12 +101,21 @@ export class LiveMap {
       this.locations.locations();
       this.publicLocations();
       this.session.isAuthenticated();
+      this.session.user();
+      this.overview.contacts();
+      const own = this.ownPosition();
       const userId = this.selectedUserId();
       if (userId !== this.lastSelectedUserId) {
         this.lastSelectedUserId = userId;
         this.fittedUserId = null;
         this.fittedWithOwn = false;
       }
+      if (userId !== null && this.fittedUserId !== userId) {
+        const contact = this.locations.locations().find((item) => item.assignment.idUsuario === userId);
+        if (contact) this.center.set({ lat: contact.location.latitud, lng: contact.location.longitud });
+        else if (own) this.center.set(own);
+      }
+      if (!this.canShowMap()) this.mapInstance = null;
       if (this.ready()) {
         this.updateMarkers();
       }
@@ -169,6 +208,37 @@ export class LiveMap {
     this.focusSelected();
   }
 
+  protected selectMarker(marker: ReadyMarker): void {
+    this.selectedMarkerId.set(marker.id);
+  }
+
+  protected closeDetails(): void {
+    const id = this.selectedMarkerId();
+    this.selectedMarkerId.set(null);
+    const buttons = this.markerAccess()?.nativeElement.querySelectorAll<HTMLButtonElement>('button');
+    const trigger = Array.from(buttons ?? []).find((button) => button.dataset['markerId'] === id);
+    (trigger ?? this.markerAccess()?.nativeElement)?.focus();
+  }
+
+  protected relativeTime(value?: string): string {
+    if (!value) return 'No disponible';
+    const timestamp = Date.parse(value);
+    if (!Number.isFinite(timestamp)) return 'No disponible';
+    const minutes = Math.max(0, Math.floor((this.now() - timestamp) / 60_000));
+    if (minutes < 1) return 'Hace menos de un minuto';
+    if (minutes < 60) return `Hace ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Hace ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    const days = Math.floor(hours / 24);
+    return `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
+  }
+
+  private initials(firstName: string, lastName: string): string {
+    const first = firstName.trim().match(/\p{L}/u)?.[0] ?? '';
+    const last = lastName.trim().match(/\p{L}/u)?.[0] ?? '';
+    return `${first}${last}`.toLocaleUpperCase('es') || '?';
+  }
+
   private focusSelected(): void {
     const userId = this.selectedUserId();
     const own = this.ownPosition();
@@ -199,13 +269,20 @@ export class LiveMap {
     const visibleLocations = selectedUserId === null
       ? this.locations.locations()
       : this.locations.locations().filter((item) => item.assignment.idUsuario === selectedUserId);
-    const privatePoints: MapPoint[] = visibleLocations.map((item) => ({
-      id: String(item.assignment.idUsuarioDispositivo),
-      title: item.assignment.alias || item.assignment.codigoDispositivo,
-      initials: 'GPS',
-      status: item.emergenciaActiva ? 'emergencia' : 'conectado',
-      position: { lat: item.location.latitud, lng: item.location.longitud },
-    }));
+    const contacts = this.overview.contacts();
+    const me = this.session.user();
+    const privatePoints: MapPoint[] = visibleLocations.map((item) => {
+      const user = item.assignment.idUsuario === me?.idUsuario
+        ? me
+        : contacts.find((record) => record.contacto.idUsuario === item.assignment.idUsuario)?.contacto;
+      return {
+        id: String(item.assignment.idUsuarioDispositivo),
+        title: user ? `${user.nombres} ${user.apellidos}`.trim() : 'Dispositivo autorizado',
+        initials: user ? this.initials(user.nombres, user.apellidos) : '?',
+        status: item.emergenciaActiva ? 'emergencia' : 'conectado',
+        position: { lat: item.location.latitud, lng: item.location.longitud },
+      };
+    });
     const publicPoints: MapPoint[] = this.publicLocations().map((item) => ({
       id: `public-${item.clavePublica}`,
       title: item.origen === 'EMERGENCIA' ? 'Emergencia pública' : 'Ubicación pública',
@@ -214,13 +291,15 @@ export class LiveMap {
       position: { lat: item.ubicacion.latitud, lng: item.ubicacion.longitud },
     }));
     const points = this.session.isAuthenticated() ? privatePoints : publicPoints;
+    const visibleById = new Map(visibleLocations.map((item) => [String(item.assignment.idUsuarioDispositivo), item]));
+    const publicById = new Map(this.publicLocations().map((item) => [`public-${item.clavePublica}`, item]));
 
     const currentPosition = this.ownPosition();
     if (currentPosition) {
       points.unshift({
         id: 'tu',
-        title: 'Tu ubicación actual',
-        initials: 'TÚ',
+        title: me ? `${me.nombres} ${me.apellidos}`.trim() : 'Tu ubicación',
+        initials: me ? this.initials(me.nombres, me.apellidos) : 'TÚ',
         status: 'yo',
         position: currentPosition,
       });
@@ -230,6 +309,10 @@ export class LiveMap {
       points.map((point) => ({
         id: point.id,
         title: point.title,
+        kind: point.id === 'tu' ? 'self' : point.id.startsWith('public-') ? 'public' : 'private',
+        deviceLabel: visibleById.get(point.id)?.assignment.alias ?? undefined,
+        updatedAt: visibleById.get(point.id)?.location.fechaHoraDispositivo ??
+          publicById.get(point.id)?.ubicacion.fechaHoraDispositivo,
         position: point.position,
         options: markerOptions(point),
       })),

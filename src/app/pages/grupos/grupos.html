@@ -5,7 +5,10 @@
       <h1 id="groups-title">Grupos</h1>
       <p class="intro">{{ groups().length }} grupos en tu red</p>
     </div>
-    <button class="new-group" type="button" [attr.aria-expanded]="showForm()" aria-controls="create-group" (click)="showForm.update((value) => !value)">+ Nuevo grupo</button>
+    <div class="heading-actions">
+      <button class="refresh-groups" type="button" [disabled]="loading()" (click)="refresh()">Actualizar</button>
+      <button class="new-group" type="button" [attr.aria-expanded]="showForm()" aria-controls="create-group" (click)="showForm.update((value) => !value)">+ Nuevo grupo</button>
+    </div>
   </header>
   @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="refresh()">Reintentar</button></p> }
   @if (notice()) { <p role="status">{{ notice() }}</p> }
@@ -35,7 +38,7 @@
         <div class="group-head">
           <span class="group-icon" aria-hidden="true">{{ group.nombre.charAt(0).toUpperCase() }}</span>
           <div class="group-name"><h2>{{ group.nombre }}</h2>
-            <p>{{ group.miembros?.length ?? 0 }} miembros</p></div>
+            <p>{{ group.miembros?.length ?? 0 }} {{ group.miembros?.length === 1 ? 'miembro' : 'miembros' }}</p></div>
           @if (selectedAssignmentId() !== null) {
             <div class="group-state">
               <span [class.is-active]="isSharing(group.idGrupo)">{{ isSharing(group.idGrupo) ? 'Compartiendo' : 'Privado' }}</span>
@@ -44,12 +47,37 @@
           }
         </div>
         @if (group.descripcion) { <p class="description">{{ group.descripcion }}</p> }
-        @if (group.miembros?.length) {
-          <div class="members"><div class="avatar-stack" [attr.aria-label]="'Miembros de ' + group.nombre">
-            @for (member of group.miembros; track member.idGrupoUsuario) {
-              <span class="member-avatar" [title]="member.usuario.nombres + ' ' + member.usuario.apellidos">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
+        <div class="group-members-summary">
+          @if (group.miembros?.length) {
+            <div class="members"><div class="avatar-stack" aria-hidden="true">
+              @for (member of group.miembros?.slice(0, 4); track member.idGrupoUsuario) {
+                <span class="member-avatar">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
+              }
+            </div></div>
+          }
+          <button class="members-toggle" type="button" [attr.aria-expanded]="expandedGroupId() === group.idGrupo"
+            [attr.aria-controls]="'group-members-' + group.idGrupo" (click)="toggleMembers(group)">
+            {{ expandedGroupId() === group.idGrupo ? 'Ocultar miembros' : 'Ver miembros' }}
+          </button>
+        </div>
+        @if (expandedGroupId() === group.idGrupo) {
+          <section class="members-panel" [id]="'group-members-' + group.idGrupo" [attr.aria-label]="'Miembros de ' + group.nombre">
+            @if (membersLoading()) { <p role="status">Actualizando miembros…</p> }
+            @if (membersError()) {
+              <p role="alert">No se pudo actualizar la lista. <button type="button" (click)="loadMembers(group.idGrupo)">Reintentar</button></p>
             }
-          </div></div>
+            <ul class="member-list">
+              @for (member of members(); track member.idGrupoUsuario) {
+                <li class="member-row">
+                  <span class="member-avatar" aria-hidden="true">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
+                  <span class="member-name">{{ member.usuario.nombres }} {{ member.usuario.apellidos }}
+                    @if (member.usuario.idUsuario === session.user()?.idUsuario) { <small>· Tú</small> }
+                  </span>
+                  <span class="member-role" [class.is-admin]="member.rol === 'ADMIN'">{{ member.rol === 'ADMIN' ? 'Administrador' : 'Miembro' }}</span>
+                </li>
+              } @empty { @if (!membersLoading() && !membersError()) { <li class="member-empty">Aún no hay miembros visibles.</li> } }
+            </ul>
+          </section>
         }
         @if (canInvite(group)) {
           <button class="invite-toggle" type="button" [attr.aria-expanded]="inviteGroupId() === group.idGrupo" [attr.aria-controls]="'invite-' + group.idGrupo" (click)="startInvite(group.idGrupo)">Invitar miembro</button>
