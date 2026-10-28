@@ -2,14 +2,26 @@ import { provideHttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { SessionStore } from '../../core/auth/session-store';
+import { ContactRecord } from '../../core/contacts/contacts-api';
 import { VisibleLocation, LocationsStore } from '../../core/locations/locations-store';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
+import { OverviewStore } from '../../core/overview/overview-store';
 import { LiveMap } from './live-map';
 
 describe('LiveMap for a selected contact', () => {
   const visible = signal<VisibleLocation[]>([]);
+  const contacts = signal<ContactRecord[]>([]);
 
   beforeEach(async () => {
+    contacts.set([{
+      idUsuarioContacto: 3,
+      contacto: { idUsuario: 12, nombres: 'Ana', apellidos: 'Ruiz' },
+      estado: 'ACEPTADO',
+      yoCompartoUbicacion: false,
+      contactoComparteUbicacion: true,
+      soySolicitante: false,
+      fechaSolicitud: '',
+    }]);
     visible.set([
       { assignment: { idUsuarioDispositivo: 1, idUsuario: 12, alias: 'Ana', codigoDispositivo: 'A', visibilidadPreferida: '', ubicacionActiva: true }, location: { idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7, fechaHoraDispositivo: '' }, emergenciaActiva: false },
       { assignment: { idUsuarioDispositivo: 2, idUsuario: 30, alias: 'Otro', codigoDispositivo: 'B', visibilidadPreferida: '', ubicacionActiva: true }, location: { idUsuarioDispositivo: 2, latitud: 41, longitud: -4, fechaHoraDispositivo: '' }, emergenciaActiva: false },
@@ -29,8 +41,12 @@ describe('LiveMap for a selected contact', () => {
       providers: [
         provideHttpClient(),
         { provide: GoogleMapsLoader, useValue: { load: () => new Promise<void>(() => {}) } },
-        { provide: SessionStore, useValue: { isAuthenticated: signal(true) } },
+        { provide: SessionStore, useValue: {
+          isAuthenticated: signal(true),
+          user: signal({ idUsuario: 50, nombres: 'Lucía', apellidos: 'García' }),
+        } },
         { provide: LocationsStore, useValue: { locations: visible, error: signal(null) } },
+        { provide: OverviewStore, useValue: { contacts } },
       ],
     }).overrideComponent(LiveMap, { set: { template: '', imports: [] } }).compileComponents();
   });
@@ -85,5 +101,59 @@ describe('LiveMap for a selected contact', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance['markers']().map((marker) => marker.id)).toEqual(['tu']);
+  });
+
+  it('waits for the device location instead of showing Spain, then starts centered on the contact', () => {
+    const authorized = visible()[0];
+    visible.set([]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentRef.setInput('selectedUserId', 12);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['canShowMap']()).toBe(false);
+    visible.set([authorized]);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance['canShowMap']()).toBe(true);
+    expect(fixture.componentInstance['center']()).toEqual({ lat: 40.5, lng: -3.7 });
+    expect(fixture.componentInstance['markers']().map((marker) => marker.id)).toEqual(['1']);
+  });
+
+  it('labels authorized markers with contact initials and updates selected details', () => {
+    visible.update((items) => [{
+      ...items[0],
+      location: { ...items[0].location, fechaHoraDispositivo: '2026-10-26T12:00:00Z' },
+    }, items[1]]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+
+    const marker = fixture.componentInstance['markers']()[0];
+    expect(marker.title).toBe('Ana Ruiz');
+    expect(decodeURIComponent((marker.options.icon as google.maps.Icon).url)).toContain('>AR</text>');
+    fixture.componentInstance['selectMarker'](marker);
+    fixture.componentInstance['now'].set(Date.parse('2026-10-26T12:03:00Z'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarker']()?.title).toBe('Ana Ruiz');
+    expect(fixture.componentInstance['relativeTime'](marker.updatedAt)).toBe('Hace 3 minutos');
+
+    visible.update((items) => [{
+      ...items[0], location: { ...items[0].location, fechaHoraDispositivo: '2026-10-26T12:02:00Z' },
+    }, items[1]]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarker']()?.updatedAt).toBe('2026-10-26T12:02:00Z');
+
+    visible.set([visible()[1]]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarker']()).toBeNull();
+  });
+
+  it('does not expose a name for an authorized group member without a contact record', () => {
+    contacts.set([]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['markers']()[0].title).toBe('Dispositivo autorizado');
   });
 });

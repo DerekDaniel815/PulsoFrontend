@@ -17,7 +17,7 @@ import { LiveMap } from '../../shared/live-map/live-map';
       </header>
       <div class="map-canvas">
         <app-live-map [selectedUserId]="selectedUserId()" />
-        <div class="map-label"><span aria-hidden="true">●</span> Vista ciudad · Tiempo real</div>
+        <div class="map-label"><span aria-hidden="true">●</span> {{ selectedUserId() ? 'Ubicación del contacto' : 'Vista ciudad' }} · Tiempo real</div>
         <div class="map-legend" aria-label="Leyenda del mapa">
           <span><i class="connected" aria-hidden="true"></i> Ubicación visible</span>
           <span><i class="emergency" aria-hidden="true"></i> Emergencia</span>
@@ -29,7 +29,7 @@ import { LiveMap } from '../../shared/live-map/live-map';
         } @else if (selectedLocations().length === 0 && !locations.error()) {
           <p class="map-help" role="status">No hay una ubicación visible de este contacto por ahora. Debe compartirla contigo y mantener su ubicación activa.</p>
         } @else {
-          <p class="map-help">Mostrando tu ubicación y la del contacto. Si no aparece tu marcador, permite el acceso a la ubicación del navegador.</p>
+          <p class="map-help">Ubicación del dispositivo del contacto disponible. Tu posición también aparecerá si permites el acceso a la ubicación del navegador.</p>
         }
       } @else {
         <p class="map-help">Solo aparecen ubicaciones que el servidor te permite ver. <a routerLink="/contactos">Gestionar contactos</a></p>

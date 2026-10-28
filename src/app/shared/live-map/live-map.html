@@ -1,10 +1,39 @@
 @if (ready()) {
-  <google-map height="100%" width="100%" [center]="center()" [zoom]="zoom" [options]="options()"
-    (mapInitialized)="onMapInitialized($event)">
-    @for (marker of markers(); track marker.id) {
-      <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options" />
+  @if (canShowMap()) {
+    <google-map height="100%" width="100%" [center]="center()" [zoom]="zoom" [options]="options()"
+      (mapInitialized)="onMapInitialized($event)">
+      @for (marker of markers(); track marker.id) {
+        <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options"
+          (mapClick)="selectMarker(marker)" />
+      }
+    </google-map>
+    <div #markerAccess class="marker-access" role="group" aria-label="Ubicaciones disponibles" tabindex="-1">
+      @for (marker of markers(); track marker.id) {
+        <button type="button" [attr.data-marker-id]="marker.id" (click)="selectMarker(marker)">
+          Ver ubicación de {{ marker.title }}
+        </button>
+      }
+    </div>
+    @if (selectedMarker(); as marker) {
+      <section class="marker-details" aria-labelledby="marker-details-title">
+        <div class="marker-details-heading">
+          <div>
+            <p class="marker-details-eyebrow">{{ marker.kind === 'self' ? 'Tu posición' : marker.kind === 'public' ? 'Ubicación pública' : 'Ubicación compartida' }}</p>
+            <h2 #detailsTitle id="marker-details-title" tabindex="-1">{{ marker.title }}</h2>
+          </div>
+          <button class="marker-details-close" type="button" aria-label="Cerrar detalles de ubicación" (click)="closeDetails()">×</button>
+        </div>
+        @if (marker.deviceLabel) { <p>Dispositivo: {{ marker.deviceLabel }}</p> }
+        @if (marker.kind === 'self') {
+          <p>Ubicación obtenida de este navegador.</p>
+        } @else {
+          <p>Última actualización: <time [attr.datetime]="marker.updatedAt || null">{{ relativeTime(marker.updatedAt) }}</time></p>
+        }
+      </section>
     }
-  </google-map>
+  } @else {
+    <p class="map-error" role="status">Esperando una ubicación visible del contacto…</p>
+  }
   @if (locations.error()) {
     <div class="location-notice location-warning" role="alert">
       {{ locations.error() }} <button type="button" (click)="locations.refresh()">Reintentar</button>
