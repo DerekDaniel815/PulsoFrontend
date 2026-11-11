@@ -65,14 +65,21 @@
         @for (record of filteredContacts(); track record.idUsuarioContacto) {
           <article class="contact-row" role="row">
             <div class="contact-identity" role="cell"><strong>{{ name(record.contacto) }}</strong></div>
-            <div role="cell">{{ record.yoCompartoUbicacion ? 'Sí' : 'No' }}</div>
-            <div role="cell">{{ record.contactoComparteUbicacion ? 'Sí' : 'No' }}</div>
-            <div class="actions" role="cell">
-              <button type="button" [disabled]="busy()" (click)="toggleSharing(record)">
+            <div role="cell"><span class="mobile-cell-label">Compartes tu ubicación</span>{{ record.yoCompartoUbicacion ? 'Sí' : 'No' }}</div>
+            <div role="cell"><span class="mobile-cell-label">Comparte contigo</span>{{ record.contactoComparteUbicacion ? 'Sí' : 'No' }}</div>
+            <div class="actions" role="cell" (keydown.escape)="closeActions(record.idUsuarioContacto, $event)">
+              <button class="share-contact" type="button" [disabled]="busy()" (click)="toggleSharing(record)">
                 {{ record.yoCompartoUbicacion ? 'Dejar de compartir' : 'Compartir mi ubicación' }}
               </button>
-              <a routerLink="/mapa" [queryParams]="{ usuario: record.contacto.idUsuario }">Ver ubicación</a>
-              <button type="button" [disabled]="busy()" (click)="remove(record)">Eliminar</button>
+              <button class="actions-toggle" type="button" [attr.aria-label]="(expandedActionsId() === record.idUsuarioContacto ? 'Ocultar' : 'Mostrar') + ' opciones de ' + name(record.contacto)"
+                [attr.aria-expanded]="expandedActionsId() === record.idUsuarioContacto"
+                [attr.aria-controls]="'contact-actions-' + record.idUsuarioContacto" (click)="toggleActions(record.idUsuarioContacto)">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </button>
+              <div class="secondary-actions" [class.is-open]="expandedActionsId() === record.idUsuarioContacto" [id]="'contact-actions-' + record.idUsuarioContacto">
+                <a routerLink="/mapa" [queryParams]="{ usuario: record.contacto.idUsuario }">Ver ubicación</a>
+                <button class="delete-contact" type="button" [disabled]="busy()" (click)="remove(record)">Eliminar</button>
+              </div>
             </div>
           </article>
         } @empty { @if (!loading()) { <p class="empty-state">No hay contactos aceptados.</p> } }

@@ -47,6 +47,36 @@ describe('Contactos', () => {
       .toBe('/mapa?usuario=12');
   });
 
+  it('keeps status labels available on narrow screens and identifies the destructive action', () => {
+    const row = fixture.nativeElement.querySelector('.contact-row') as HTMLElement;
+    expect([...row.querySelectorAll('.mobile-cell-label')].map((label) => label.textContent?.trim()))
+      .toEqual(['Compartes tu ubicación', 'Comparte contigo']);
+    expect(row.querySelector('.actions .delete-contact')?.textContent).toContain('Eliminar');
+  });
+
+  it('expands compact actions from the arrow and closes them with Escape', () => {
+    const row = fixture.nativeElement.querySelector('.contact-row') as HTMLElement;
+    const toggle = row.querySelector('.actions-toggle') as HTMLButtonElement;
+    const secondary = row.querySelector('.secondary-actions') as HTMLElement;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe(secondary.id);
+    expect(toggle.getAttribute('aria-label')).toContain('Carlos Pérez');
+    expect(secondary.classList.contains('is-open')).toBe(false);
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(secondary.classList.contains('is-open')).toBe(true);
+    expect(secondary.querySelector('a')?.textContent).toContain('Ver ubicación');
+    expect(secondary.querySelector('.delete-contact')?.textContent).toContain('Eliminar');
+
+    secondary.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(secondary.classList.contains('is-open')).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+  });
+
   it('filters contacts by name', () => {
     const input = fixture.nativeElement.querySelector('input[type="search"]') as HTMLInputElement;
     input.value = 'Nadie';
