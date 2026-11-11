@@ -23,6 +23,7 @@ export class Contactos {
   protected readonly requests = signal<ContactRecord[]>([]);
   protected readonly results = signal<PublicUser[]>([]);
   protected readonly searchTerm = signal('');
+  protected readonly expandedActionsId = signal<number | null>(null);
   protected readonly userSearchTerm = signal('');
   protected readonly addOpen = signal(false);
   protected readonly searching = signal(false);
@@ -63,6 +64,17 @@ export class Contactos {
 
   protected updateSearch(event: Event): void {
     this.searchTerm.set((event.target as HTMLInputElement).value);
+    this.expandedActionsId.set(null);
+  }
+
+  protected toggleActions(id: number): void {
+    this.expandedActionsId.update((current) => current === id ? null : id);
+  }
+
+  protected closeActions(id: number, event: Event): void {
+    if (this.expandedActionsId() !== id) return;
+    this.expandedActionsId.set(null);
+    (event.currentTarget as HTMLElement).querySelector<HTMLButtonElement>('.actions-toggle')?.focus();
   }
 
   protected openAdd(): void {
@@ -119,6 +131,9 @@ export class Contactos {
         firstValueFrom(this.api.requests()),
       ]);
       this.contacts.set(contacts);
+      if (!contacts.some((item) => item.idUsuarioContacto === this.expandedActionsId())) {
+        this.expandedActionsId.set(null);
+      }
       this.requests.set(requests);
       this.error.set(null);
     } catch {

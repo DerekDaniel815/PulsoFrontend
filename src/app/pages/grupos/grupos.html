@@ -18,6 +18,9 @@
       <label>Nombre del nuevo grupo
         <input type="text" maxlength="100" required [value]="newName()" (input)="updateName($event)" />
       </label>
+      <label>Descripción (opcional)
+        <input type="text" maxlength="500" [value]="newDescription()" (input)="updateDescription($event)" />
+      </label>
       <button class="new-group" type="submit" [disabled]="busy() || !newName().trim()">Crear</button>
     </form>
   }
@@ -29,6 +32,12 @@
         }
       </select>
     </label>
+    @if (selectedAssignment()?.visibilidadPreferida !== 'GRUPO') {
+      <p class="info-notice" role="status">Los permisos de grupo solo tienen efecto si la visibilidad del dispositivo es «Grupo». Puedes cambiarla en Configuración.</p>
+    }
+    @if (!selectedAssignment()?.ubicacionActiva) {
+      <p class="info-notice" role="status">La ubicación de este dispositivo está pausada.</p>
+    }
   } @else if (!loading()) {
     <p class="info-notice">Vincula un dispositivo para compartir su ubicación con grupos.</p>
   }
@@ -41,12 +50,13 @@
             <p>{{ group.miembros?.length ?? 0 }} {{ group.miembros?.length === 1 ? 'miembro' : 'miembros' }}</p></div>
           @if (selectedAssignmentId() !== null) {
             <div class="group-state">
-              <span [class.is-active]="isSharing(group.idGrupo)">{{ isSharing(group.idGrupo) ? 'Compartiendo' : 'Privado' }}</span>
-              <button class="switch" type="button" role="switch" [disabled]="busy()" [class.is-active]="isSharing(group.idGrupo)" [attr.aria-checked]="isSharing(group.idGrupo)" [attr.aria-label]="(isSharing(group.idGrupo) ? 'Dejar de compartir con ' : 'Compartir ubicación con ') + group.nombre" (click)="toggleSharing(group.idGrupo)"><span></span></button>
+              <span [class.is-active]="isSharing(group.idGrupo)">{{ !groupSharing(group.idGrupo) ? 'Sin datos' : isSharing(group.idGrupo) ? 'Compartiendo' : 'Privado' }}</span>
+              <button class="switch" type="button" role="switch" [disabled]="busy() || !groupSharing(group.idGrupo)" [class.is-active]="isSharing(group.idGrupo)" [attr.aria-checked]="isSharing(group.idGrupo)" [attr.aria-label]="(isSharing(group.idGrupo) ? 'Dejar de compartir con ' : 'Compartir ubicación con ') + group.nombre" (click)="toggleSharing(group.idGrupo)"><span></span></button>
             </div>
           }
         </div>
         @if (group.descripcion) { <p class="description">{{ group.descripcion }}</p> }
+        @if (!group.estado) { <p class="info-notice">Grupo desactivado.</p> }
         <div class="group-members-summary">
           @if (group.miembros?.length) {
             <div class="members"><div class="avatar-stack" aria-hidden="true">
@@ -62,6 +72,24 @@
         </div>
         @if (expandedGroupId() === group.idGrupo) {
           <section class="members-panel" [id]="'group-members-' + group.idGrupo" [attr.aria-label]="'Miembros de ' + group.nombre">
+            @if (canAdmin(group)) {
+              <div class="group-admin-actions">
+                <button type="button" [disabled]="busy()" (click)="startEdit(group)">Editar grupo</button>
+                <button type="button" [disabled]="busy()" (click)="toggleGroup(group)">{{ group.estado ? 'Desactivar' : 'Activar' }} grupo</button>
+              </div>
+              @if (editingGroupId() === group.idGrupo) {
+                <form class="create-group" (submit)="$event.preventDefault(); saveGroup(group)">
+                  <label>Nombre del grupo
+                    <input type="text" required maxlength="100" [value]="editName()" (input)="updateEditName($event)" />
+                  </label>
+                  <label>Descripción
+                    <input type="text" maxlength="500" [value]="editDescription()" (input)="updateEditDescription($event)" />
+                  </label>
+                  <button type="submit" [disabled]="busy() || !editName().trim()">Guardar cambios</button>
+                  <button type="button" (click)="editingGroupId.set(null)">Cancelar edición</button>
+                </form>
+              }
+            }
             @if (membersLoading()) { <p role="status">Actualizando miembros…</p> }
             @if (membersError()) {
               <p role="alert">No se pudo actualizar la lista. <button type="button" (click)="loadMembers(group.idGrupo)">Reintentar</button></p>
@@ -74,12 +102,22 @@
                     @if (member.usuario.idUsuario === session.user()?.idUsuario) { <small>· Tú</small> }
                   </span>
                   <span class="member-role" [class.is-admin]="member.rol === 'ADMIN'">{{ member.rol === 'ADMIN' ? 'Administrador' : 'Miembro' }}</span>
+                  @if (selectedAssignmentId() !== null && member.usuario.idUsuario !== session.user()?.idUsuario && isSharing(group.idGrupo)) {
+                    <button type="button" [disabled]="busy() || selectedAssignment()?.visibilidadPreferida !== 'GRUPO'" (click)="toggleMemberSharing(group.idGrupo, member)">
+                      {{ isExcluded(group.idGrupo, member.usuario.idUsuario) ? 'Volver a permitir ubicación a ' : 'Excluir de ubicación a ' }}{{ member.usuario.nombres }}
+                    </button>
+                  }
+                  @if (member.usuario.idUsuario === session.user()?.idUsuario || canAdmin(group)) {
+                    <button type="button" [disabled]="busy()" (click)="removeMember(group, member)">
+                      {{ member.usuario.idUsuario === session.user()?.idUsuario ? 'Salir del grupo' : 'Retirar del grupo' }}
+                    </button>
+                  }
                 </li>
               } @empty { @if (!membersLoading() && !membersError()) { <li class="member-empty">Aún no hay miembros visibles.</li> } }
             </ul>
           </section>
         }
-        @if (canInvite(group)) {
+        @if (canAdmin(group)) {
           <button class="invite-toggle" type="button" [attr.aria-expanded]="inviteGroupId() === group.idGrupo" [attr.aria-controls]="'invite-' + group.idGrupo" (click)="startInvite(group.idGrupo)">Invitar miembro</button>
           @if (inviteGroupId() === group.idGrupo) {
             <div class="invite-form" [id]="'invite-' + group.idGrupo">
@@ -103,4 +141,15 @@
       </p>
     } @empty { <p>No hay invitaciones pendientes.</p> }
   </section>
+  @if (sentInvitations().length) {
+    <section class="permissions" aria-labelledby="sent-invites-title">
+      <h2 id="sent-invites-title">Invitaciones enviadas en esta sesión</h2>
+      <p>El servidor aún no permite consultar invitaciones enviadas anteriormente.</p>
+      @for (invite of sentInvitations(); track invite.idInvitacion) {
+        <p>{{ invite.nombreGrupo }} · {{ invite.invitado.nombres }} {{ invite.invitado.apellidos }}
+          <button type="button" [disabled]="busy()" (click)="cancelInvitation(invite)">Cancelar invitación</button>
+        </p>
+      }
+    </section>
+  }
 </section>

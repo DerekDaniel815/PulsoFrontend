@@ -1,40 +1,18 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
 import { SessionStore } from '../../core/auth/session-store';
 import { ContactsApi, PublicUser } from '../../core/contacts/contacts-api';
+import { GroupSharing, GroupSharingApi } from '../../core/groups/group-sharing-api';
+import { Group, GroupMember, GroupsApi, Invitation } from '../../core/groups/groups-api';
 import { LocationsStore } from '../../core/locations/locations-store';
-
-interface GroupMember {
-  idGrupoUsuario: number;
-  usuario: { idUsuario: number; nombres: string; apellidos: string };
-  rol: string;
-}
-
-interface Group {
-  idGrupo: number;
-  idCreador?: number;
-  nombre: string;
-  descripcion: string | null;
-  estado: boolean;
-  miembros?: GroupMember[];
-}
 
 interface Assignment {
   idUsuarioDispositivo: number;
   alias: string | null;
-}
-
-interface GroupSharing {
-  idGrupo: number;
-  compartiendo: boolean;
-}
-
-interface Invitation {
-  idInvitacion: number;
-  nombreGrupo: string;
-  invitador: { nombres: string; apellidos: string };
+  visibilidadPreferida: 'SOLO_YO' | 'GRUPO' | 'PUBLICO';
+  ubicacionActiva: boolean;
 }
 
 @Component({
@@ -44,6 +22,8 @@ interface Invitation {
 })
 export class Grupos {
   private readonly http = inject(HttpClient);
+  private readonly groupsApi = inject(GroupsApi);
+  private readonly sharingApi = inject(GroupSharingApi);
   private readonly contactsApi = inject(ContactsApi);
   protected readonly session = inject(SessionStore);
   private readonly locations = inject(LocationsStore);
@@ -52,13 +32,22 @@ export class Grupos {
   protected readonly groups = signal<Group[]>([]);
   protected readonly assignments = signal<Assignment[]>([]);
   protected readonly selectedAssignmentId = signal<number | null>(null);
+  protected readonly selectedAssignment = computed(() =>
+    this.assignments().find((item) => item.idUsuarioDispositivo === this.selectedAssignmentId()) ?? null,
+  );
   protected readonly sharing = signal<GroupSharing[]>([]);
   protected readonly invitations = signal<Invitation[]>([]);
+  // El backend no lista las invitaciones enviadas: solo podemos cancelar las creadas en esta sesión.
+  protected readonly sentInvitations = signal<Invitation[]>([]);
   protected readonly error = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly loading = signal(true);
   protected readonly showForm = signal(false);
   protected readonly newName = signal('');
+  protected readonly newDescription = signal('');
+  protected readonly editingGroupId = signal<number | null>(null);
+  protected readonly editName = signal('');
+  protected readonly editDescription = signal('');
   protected readonly inviteGroupId = signal<number | null>(null);
   protected readonly searchTerm = signal('');
   protected readonly searchResults = signal<PublicUser[]>([]);
@@ -80,14 +69,15 @@ export class Grupos {
     this.loading.set(true);
     try {
       const [groups, invitations, assignments] = await Promise.all([
-        firstValueFrom(this.http.get<Group[]>(`${PULSO_API_URL}/groups`)),
-        firstValueFrom(this.http.get<Invitation[]>(`${PULSO_API_URL}/groups/invitations`)),
+        firstValueFrom(this.groupsApi.list()),
+        firstValueFrom(this.groupsApi.invitations()),
         firstValueFrom(this.http.get<Assignment[]>(`${PULSO_API_URL}/user-devices/me`)),
       ]);
       if (generation !== this.refreshGeneration) return;
       this.groups.set(groups);
       this.invitations.set(invitations);
       this.assignments.set(assignments);
+      this.sentInvitations.update((items) => items.filter((item) => groups.some((group) => group.idGrupo === item.idGrupo)));
       const expanded = groups.find((group) => group.idGrupo === this.expandedGroupId());
       if (expanded) {
         this.members.set(expanded.miembros ?? []);
@@ -96,11 +86,11 @@ export class Grupos {
         this.expandedGroupId.set(null);
         this.members.set([]);
       }
-      if (this.selectedAssignmentId() === null && assignments.length) {
-        this.selectedAssignmentId.set(assignments[0].idUsuarioDispositivo);
+      if (!assignments.some((item) => item.idUsuarioDispositivo === this.selectedAssignmentId())) {
+        this.selectedAssignmentId.set(assignments[0]?.idUsuarioDispositivo ?? null);
       }
+      this.error.set(null);
       await this.loadSharing();
-      if (generation === this.refreshGeneration) this.error.set(null);
     } catch {
       if (generation === this.refreshGeneration) this.error.set('No se pudieron cargar los grupos.');
     } finally {
@@ -108,20 +98,38 @@ export class Grupos {
     }
   }
 
-  protected updateName(event: Event): void {
-    this.newName.set((event.target as HTMLInputElement).value);
-  }
-
   protected toggleMembers(group: Group): void {
     if (this.expandedGroupId() === group.idGrupo) {
       this.expandedGroupId.set(null);
+      this.editingGroupId.set(null);
       this.memberRequestGeneration++;
       return;
     }
     this.expandedGroupId.set(group.idGrupo);
+    this.editingGroupId.set(null);
     this.members.set(group.miembros ?? []);
     this.membersError.set(false);
     void this.loadMembers(group.idGrupo);
+  }
+
+  protected updateName(event: Event): void {
+    this.newName.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateDescription(event: Event): void {
+    this.newDescription.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateEditName(event: Event): void {
+    this.editName.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateEditDescription(event: Event): void {
+    this.editDescription.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateSearch(event: Event): void {
+    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
   protected async loadMembers(groupId: number): Promise<void> {
@@ -129,7 +137,7 @@ export class Grupos {
     this.membersLoading.set(true);
     this.membersError.set(false);
     try {
-      const members = await firstValueFrom(this.http.get<GroupMember[]>(`${PULSO_API_URL}/groups/${groupId}/members`));
+      const members = await firstValueFrom(this.groupsApi.members(groupId));
       if (generation === this.memberRequestGeneration && this.expandedGroupId() === groupId) {
         this.members.set(members);
         this.groups.update((groups) => groups.map((group) =>
@@ -145,20 +153,54 @@ export class Grupos {
     }
   }
 
-  protected canInvite(group: Group): boolean {
+  protected canAdmin(group: Group): boolean {
     const userId = this.session.user()?.idUsuario;
     return userId !== undefined && (group.idCreador === userId ||
       (group.miembros?.some((member) => member.usuario.idUsuario === userId && member.rol === 'ADMIN') ?? false));
+  }
+
+  protected startEdit(group: Group): void {
+    this.editingGroupId.set(group.idGrupo);
+    this.editName.set(group.nombre);
+    this.editDescription.set(group.descripcion ?? '');
+  }
+
+  protected async saveGroup(group: Group): Promise<void> {
+    const nombre = this.editName().trim();
+    const descripcion = this.editDescription().trim();
+    if (!nombre || nombre.length > 100 || descripcion.length > 500 || !this.canAdmin(group)) return;
+    if (await this.act(() => firstValueFrom(this.groupsApi.update(group.idGrupo, { nombre, descripcion })))) {
+      this.editingGroupId.set(null);
+      this.notice.set('Grupo actualizado.');
+    }
+  }
+
+  protected async toggleGroup(group: Group): Promise<void> {
+    if (!this.canAdmin(group) || !globalThis.confirm(
+      `¿${group.estado ? 'Desactivar' : 'Activar'} el grupo ${group.nombre}? Esto puede cambiar quién ve las ubicaciones compartidas.`,
+    )) return;
+    if (await this.act(() => firstValueFrom(this.groupsApi.update(group.idGrupo, { estado: !group.estado })))) {
+      this.notice.set(`Grupo ${group.estado ? 'desactivado' : 'activado'}.`);
+      void this.locations.refresh();
+    }
+  }
+
+  protected async removeMember(group: Group, member: GroupMember): Promise<void> {
+    const userId = this.session.user()?.idUsuario;
+    const isSelf = member.usuario.idUsuario === userId;
+    if ((!isSelf && !this.canAdmin(group)) || !globalThis.confirm(isSelf
+      ? `¿Salir del grupo ${group.nombre}? Perderás el acceso a sus ubicaciones compartidas.`
+      : `¿Retirar a ${member.usuario.nombres} ${member.usuario.apellidos} del grupo ${group.nombre}?`)) return;
+    if (await this.act(() => firstValueFrom(this.groupsApi.removeMember(group.idGrupo, member.usuario.idUsuario)))) {
+      this.notice.set(isSelf ? 'Saliste del grupo.' : 'Miembro retirado.');
+      void this.locations.refresh();
+    }
   }
 
   protected startInvite(groupId: number): void {
     this.inviteGroupId.set(this.inviteGroupId() === groupId ? null : groupId);
     this.searchResults.set([]);
     this.searchTerm.set('');
-  }
-
-  protected updateSearch(event: Event): void {
-    this.searchTerm.set((event.target as HTMLInputElement).value);
   }
 
   protected async searchUsers(): Promise<void> {
@@ -176,9 +218,10 @@ export class Grupos {
     if (this.busy()) return;
     this.busy.set(true);
     try {
-      await firstValueFrom(this.http.post(`${PULSO_API_URL}/groups/${groupId}/invitations`, {
-        idUsuarioInvitado: user.idUsuario,
-      }));
+      const invitation = await firstValueFrom(this.groupsApi.invite(groupId, user.idUsuario));
+      if (typeof invitation?.idInvitacion === 'number') {
+        this.sentInvitations.update((items) => [...items, invitation]);
+      }
       this.notice.set(`Invitación enviada a ${user.nombres} ${user.apellidos}. Aparecerá como miembro cuando la acepte.`);
       this.inviteGroupId.set(null);
       this.error.set(null);
@@ -189,27 +232,41 @@ export class Grupos {
     }
   }
 
+  protected async cancelInvitation(invitation: Invitation): Promise<void> {
+    if (!globalThis.confirm(`¿Cancelar la invitación a ${invitation.invitado.nombres} ${invitation.invitado.apellidos}?`)) return;
+    if (await this.act(() => firstValueFrom(this.groupsApi.respond(invitation.idInvitacion, 'cancel')))) {
+      this.sentInvitations.update((items) => items.filter((item) => item.idInvitacion !== invitation.idInvitacion));
+      this.notice.set('Invitación cancelada.');
+    }
+  }
+
   protected selectAssignment(event: Event): void {
     this.selectedAssignmentId.set(Number((event.target as HTMLSelectElement).value));
     this.sharing.set([]);
     void this.loadSharing();
   }
 
+  protected groupSharing(groupId: number): GroupSharing | undefined {
+    return this.sharing().find((item) => item.idGrupo === groupId);
+  }
+
   protected isSharing(groupId: number): boolean {
-    return this.sharing().some((item) => item.idGrupo === groupId && item.compartiendo);
+    return this.groupSharing(groupId)?.compartiendo ?? false;
+  }
+
+  protected isExcluded(groupId: number, userId: number): boolean {
+    return this.groupSharing(groupId)?.miembrosExcluidos?.some((member) => member.idUsuario === userId) ?? false;
   }
 
   protected async toggleSharing(groupId: number): Promise<void> {
     const id = this.selectedAssignmentId();
-    if (id === null || this.busy()) return;
+    if (id === null || this.busy() || !this.groupSharing(groupId)) return;
     this.busy.set(true);
     try {
-      await firstValueFrom(this.http.patch(
-        `${PULSO_API_URL}/user-devices/${id}/groups/${groupId}/sharing`,
-        { comparteUbicacion: !this.isSharing(groupId) },
-      ));
+      await firstValueFrom(this.sharingApi.share(id, groupId, !this.isSharing(groupId)));
       await this.loadSharing();
       this.error.set(null);
+      void this.locations.refresh();
     } catch {
       this.error.set('No se pudo actualizar el permiso del grupo.');
     } finally {
@@ -217,41 +274,66 @@ export class Grupos {
     }
   }
 
+  protected async toggleMemberSharing(groupId: number, member: GroupMember): Promise<void> {
+    const id = this.selectedAssignmentId();
+    const userId = member.usuario.idUsuario;
+    if (id === null || this.busy() || userId === this.session.user()?.idUsuario ||
+      !this.isSharing(groupId) || this.selectedAssignment()?.visibilidadPreferida !== 'GRUPO') return;
+    this.busy.set(true);
+    try {
+      await firstValueFrom(this.sharingApi.allowMember(id, groupId, userId, this.isExcluded(groupId, userId)));
+      await this.loadSharing();
+      this.error.set(null);
+      void this.locations.refresh();
+    } catch {
+      this.error.set('No se pudo actualizar el acceso del miembro.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   private async loadSharing(): Promise<void> {
     const id = this.selectedAssignmentId();
-    if (id === null) return;
+    if (id === null) {
+      this.sharing.set([]);
+      return;
+    }
     try {
-      const items = await firstValueFrom(this.http.get<GroupSharing[]>(
-        `${PULSO_API_URL}/user-devices/${id}/groups-sharing`,
-      ));
+      const items = await firstValueFrom(this.sharingApi.list(id));
       if (id === this.selectedAssignmentId()) this.sharing.set(items);
     } catch {
-      this.error.set('No se pudieron consultar los permisos del dispositivo.');
+      if (id === this.selectedAssignmentId()) this.error.set('No se pudieron consultar los permisos del dispositivo.');
     }
   }
 
   protected async create(): Promise<void> {
     const nombre = this.newName().trim();
-    if (!nombre || this.busy()) return;
-    await this.act(() => firstValueFrom(this.http.post(`${PULSO_API_URL}/groups`, { nombre })));
-    this.newName.set('');
+    const descripcion = this.newDescription().trim();
+    if (!nombre || nombre.length > 100 || descripcion.length > 500) return;
+    if (await this.act(() => firstValueFrom(this.groupsApi.create(nombre, descripcion)))) {
+      this.newName.set('');
+      this.newDescription.set('');
+      this.showForm.set(false);
+    }
   }
 
   protected async respond(invitation: Invitation, action: 'accept' | 'reject'): Promise<void> {
-    await this.act(() => firstValueFrom(
-      this.http.patch(`${PULSO_API_URL}/groups/invitations/${invitation.idInvitacion}/${action}`, {}),
-    ));
+    if (await this.act(() => firstValueFrom(this.groupsApi.respond(invitation.idInvitacion, action)))) {
+      this.notice.set(action === 'accept' ? 'Invitación aceptada.' : 'Invitación rechazada.');
+    }
   }
 
-  private async act(operation: () => Promise<unknown>): Promise<void> {
-    if (this.busy()) return;
+  private async act(operation: () => Promise<unknown>): Promise<boolean> {
+    if (this.busy()) return false;
     this.busy.set(true);
+    this.error.set(null);
     try {
       await operation();
       await this.refresh();
-      this.showForm.set(false);
+      return true;
     } catch {
-      this.error.set('No se pudo completar la acción.');
+      this.error.set('No se pudo completar la acción. Inténtalo de nuevo.');
+      return false;
     } finally {
       this.busy.set(false);
     }

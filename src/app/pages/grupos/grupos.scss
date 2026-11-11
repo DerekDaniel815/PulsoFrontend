@@ -293,11 +293,37 @@ h1 {
 .member-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   min-width: 0;
   padding: 8px;
   border-radius: 10px;
   background: var(--surface);
+}
+
+.group-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.group-admin-actions button,
+.member-row button,
+.permissions button,
+.create-group button:not(.new-group) {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--bg-elevated);
+  cursor: pointer;
+}
+
+.groups-page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .member-row .member-avatar {
