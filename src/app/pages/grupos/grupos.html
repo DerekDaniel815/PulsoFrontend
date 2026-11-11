@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Ubicación compartida</p>
       <h1 id="groups-title">Grupos</h1>
-      <p class="intro">{{ groups().length }} grupos en tu red</p>
+      <p class="intro">{{ groups().length }} grupos en tu red · {{ activePermissions() }} con acceso a ubicación</p>
     </div>
     <div class="heading-actions">
       <button class="refresh-groups" type="button" [disabled]="loading()" (click)="refresh()">Actualizar</button>
@@ -25,53 +25,72 @@
     </form>
   }
   @if (assignments().length) {
-    <label class="assignment-picker">Configurar permisos del dispositivo
-      <select [value]="selectedAssignmentId()" (change)="selectAssignment($event)">
-        @for (assignment of assignments(); track assignment.idUsuarioDispositivo) {
-          <option [value]="assignment.idUsuarioDispositivo">{{ assignment.alias || 'Dispositivo ' + assignment.idUsuarioDispositivo }}</option>
-        }
-      </select>
-    </label>
+    <div class="device-toolbar">
+      <label class="assignment-picker"><span class="assignment-label">Permisos del dispositivo</span>
+        <select [value]="selectedAssignmentId()" (change)="selectAssignment($event)">
+          @for (assignment of assignments(); track assignment.idUsuarioDispositivo) {
+            <option [value]="assignment.idUsuarioDispositivo">{{ assignment.alias || 'Dispositivo ' + assignment.idUsuarioDispositivo }}</option>
+          }
+        </select>
+      </label>
+      <span class="toolbar-hint">Selecciona un dispositivo para gestionar sus grupos</span>
+    </div>
     @if (selectedAssignment()?.visibilidadPreferida !== 'GRUPO') {
-      <p class="info-notice" role="status">Los permisos de grupo solo tienen efecto si la visibilidad del dispositivo es «Grupo». Puedes cambiarla en Configuración.</p>
+      <p class="info-notice device-notice" role="status">Los permisos de grupo solo tienen efecto si la visibilidad del dispositivo es «Grupo». Puedes cambiarla en Configuración.</p>
     }
     @if (!selectedAssignment()?.ubicacionActiva) {
-      <p class="info-notice" role="status">La ubicación de este dispositivo está pausada.</p>
+      <p class="info-notice device-notice is-paused" role="status">La ubicación de este dispositivo está pausada.
+        <button type="button" [disabled]="busy()" (click)="activateLocation()">Activar ubicación</button>
+      </p>
     }
   } @else if (!loading()) {
     <p class="info-notice">Vincula un dispositivo para compartir su ubicación con grupos.</p>
   }
   <div class="group-grid">
     @for (group of groups(); track group.idGrupo) {
-      <article class="group-card">
+      @let permission = permissionFor(group.idGrupo);
+      <article class="group-card" [class.is-disabled]="!group.estado">
         <div class="group-head">
           <span class="group-icon" aria-hidden="true">{{ group.nombre.charAt(0).toUpperCase() }}</span>
           <div class="group-name"><h2>{{ group.nombre }}</h2>
             <p>{{ group.miembros?.length ?? 0 }} {{ group.miembros?.length === 1 ? 'miembro' : 'miembros' }}</p></div>
           @if (selectedAssignmentId() !== null) {
             <div class="group-state">
-              <span [class.is-active]="isSharing(group.idGrupo)">{{ !groupSharing(group.idGrupo) ? 'Sin datos' : isSharing(group.idGrupo) ? 'Compartiendo' : 'Privado' }}</span>
+              <span [class.is-active]="permission?.active">{{ permission?.status }}</span>
               <button class="switch" type="button" role="switch" [disabled]="busy() || !groupSharing(group.idGrupo)" [class.is-active]="isSharing(group.idGrupo)" [attr.aria-checked]="isSharing(group.idGrupo)" [attr.aria-label]="(isSharing(group.idGrupo) ? 'Dejar de compartir con ' : 'Compartir ubicación con ') + group.nombre" (click)="toggleSharing(group.idGrupo)"><span></span></button>
             </div>
           }
         </div>
-        @if (group.descripcion) { <p class="description">{{ group.descripcion }}</p> }
-        @if (!group.estado) { <p class="info-notice">Grupo desactivado.</p> }
-        <div class="group-members-summary">
-          @if (group.miembros?.length) {
-            <div class="members"><div class="avatar-stack" aria-hidden="true">
-              @for (member of group.miembros?.slice(0, 4); track member.idGrupoUsuario) {
-                <span class="member-avatar">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
-              }
-            </div></div>
-          }
-          <button class="members-toggle" type="button" [attr.aria-expanded]="expandedGroupId() === group.idGrupo"
-            [attr.aria-controls]="'group-members-' + group.idGrupo" (click)="toggleMembers(group)">
-            {{ expandedGroupId() === group.idGrupo ? 'Ocultar miembros' : 'Ver miembros' }}
-          </button>
+        <p class="description">{{ group.descripcion || 'Sin descripción del grupo' }}</p>
+        <div class="card-actions">
+          <div class="group-members-summary">
+            @if (group.miembros?.length) {
+              <div class="members"><div class="avatar-stack" aria-hidden="true">
+                @for (member of group.miembros?.slice(0, 4); track member.idGrupoUsuario) {
+                  <span class="member-avatar">{{ member.usuario.nombres.charAt(0) }}{{ member.usuario.apellidos.charAt(0) }}</span>
+                }
+              </div></div>
+            }
+            <button class="members-toggle" type="button" [attr.aria-expanded]="expandedGroupId() === group.idGrupo"
+              [attr.aria-controls]="'group-members-' + group.idGrupo" (click)="toggleMembers(group)">
+              {{ expandedGroupId() === group.idGrupo ? 'Ocultar miembros' : 'Ver miembros' }}
+            </button>
+          </div>
         </div>
         @if (expandedGroupId() === group.idGrupo) {
           <section class="members-panel" [id]="'group-members-' + group.idGrupo" [attr.aria-label]="'Miembros de ' + group.nombre">
+            @if (canAdmin(group)) {
+              <button class="invite-toggle" type="button" [attr.aria-expanded]="inviteGroupId() === group.idGrupo" [attr.aria-controls]="'invite-' + group.idGrupo" (click)="startInvite(group.idGrupo)">Invitar miembro</button>
+              @if (inviteGroupId() === group.idGrupo) {
+                <div class="invite-form" [id]="'invite-' + group.idGrupo">
+                  <label>Buscar usuario <input type="search" [value]="searchTerm()" (input)="updateSearch($event)" /></label>
+                  <button type="button" [disabled]="searchTerm().trim().length < 2" (click)="searchUsers()">Buscar</button>
+                  @for (user of searchResults(); track user.idUsuario) {
+                    <p>{{ user.nombres }} {{ user.apellidos }} <button type="button" [disabled]="busy()" (click)="invite(group.idGrupo, user)">Invitar</button></p>
+                  }
+                </div>
+              }
+            }
             @if (canAdmin(group)) {
               <div class="group-admin-actions">
                 <button type="button" [disabled]="busy()" (click)="startEdit(group)">Editar grupo</button>
@@ -117,21 +136,24 @@
             </ul>
           </section>
         }
-        @if (canAdmin(group)) {
-          <button class="invite-toggle" type="button" [attr.aria-expanded]="inviteGroupId() === group.idGrupo" [attr.aria-controls]="'invite-' + group.idGrupo" (click)="startInvite(group.idGrupo)">Invitar miembro</button>
-          @if (inviteGroupId() === group.idGrupo) {
-            <div class="invite-form" [id]="'invite-' + group.idGrupo">
-              <label>Buscar usuario <input type="search" [value]="searchTerm()" (input)="updateSearch($event)" /></label>
-              <button type="button" [disabled]="searchTerm().trim().length < 2" (click)="searchUsers()">Buscar</button>
-              @for (user of searchResults(); track user.idUsuario) {
-                <p>{{ user.nombres }} {{ user.apellidos }} <button type="button" [disabled]="busy()" (click)="invite(group.idGrupo, user)">Invitar</button></p>
-              }
-            </div>
-          }
-        }
       </article>
     } @empty { @if (!loading()) { <p>No perteneces a ningún grupo.</p> } }
   </div>
+  @if (selectedAssignment() && groups().length) {
+    <section class="sharing-summary" aria-labelledby="sharing-summary-title">
+      <h2 id="sharing-summary-title">Resumen de permisos de ubicación</h2>
+      <ul>
+        @for (item of permissionSummary(); track item.group.idGrupo) {
+          <li>
+            <span class="summary-icon" aria-hidden="true">{{ item.group.nombre.charAt(0).toUpperCase() }}</span>
+            <span class="summary-name">{{ item.group.nombre }}</span>
+            <span class="summary-status" [class.is-active]="item.active">{{ item.status }}</span>
+            @if (item.excluded) { <small>{{ item.excluded }} {{ item.excluded === 1 ? 'miembro excluido' : 'miembros excluidos' }}</small> }
+          </li>
+        }
+      </ul>
+    </section>
+  }
   <section class="permissions" aria-labelledby="invites-title">
     <h2 id="invites-title">Invitaciones recibidas</h2>
     @for (invite of invitations(); track invite.idInvitacion) {
