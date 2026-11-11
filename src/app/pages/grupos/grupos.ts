@@ -36,6 +36,20 @@ export class Grupos {
     this.assignments().find((item) => item.idUsuarioDispositivo === this.selectedAssignmentId()) ?? null,
   );
   protected readonly sharing = signal<GroupSharing[]>([]);
+  protected readonly permissionSummary = computed(() => {
+    const device = this.selectedAssignment();
+    const sharing = this.sharing();
+    return this.groups().map((group) => {
+      const permission = sharing.find((item) => item.idGrupo === group.idGrupo);
+      const active = !!device && !!permission?.compartiendo && group.estado &&
+        device.visibilidadPreferida === 'GRUPO' && device.ubicacionActiva;
+      const status = !device ? 'Sin dispositivo' : !permission ? 'Sin datos' :
+        !group.estado ? 'Grupo inactivo' : device.visibilidadPreferida !== 'GRUPO' ? 'Sin efecto' :
+          !device.ubicacionActiva ? 'Pausado' : active ? 'Activo' : 'Sin acceso';
+      return { group, active, status, excluded: permission?.miembrosExcluidos?.length ?? 0 };
+    });
+  });
+  protected readonly activePermissions = computed(() => this.permissionSummary().filter((item) => item.active).length);
   protected readonly invitations = signal<Invitation[]>([]);
   // El backend no lista las invitaciones enviadas: solo podemos cancelar las creadas en esta sesión.
   protected readonly sentInvitations = signal<Invitation[]>([]);
@@ -102,11 +116,13 @@ export class Grupos {
     if (this.expandedGroupId() === group.idGrupo) {
       this.expandedGroupId.set(null);
       this.editingGroupId.set(null);
+      this.inviteGroupId.set(null);
       this.memberRequestGeneration++;
       return;
     }
     this.expandedGroupId.set(group.idGrupo);
     this.editingGroupId.set(null);
+    this.inviteGroupId.set(null);
     this.members.set(group.miembros ?? []);
     this.membersError.set(false);
     void this.loadMembers(group.idGrupo);
@@ -246,8 +262,36 @@ export class Grupos {
     void this.loadSharing();
   }
 
+  protected async activateLocation(): Promise<void> {
+    const device = this.selectedAssignment();
+    if (!device || device.ubicacionActiva || this.busy()) return;
+    if (!globalThis.confirm(
+      `¿Activar la ubicación de ${device.alias || 'dispositivo ' + device.idUsuarioDispositivo}? Podrá compartirse según su visibilidad y los permisos configurados.`,
+    )) return;
+    this.busy.set(true);
+    this.error.set(null);
+    try {
+      const updated = await firstValueFrom(this.http.patch<Assignment>(
+        `${PULSO_API_URL}/user-devices/${device.idUsuarioDispositivo}`, { ubicacionActiva: true },
+      ));
+      if (!updated.ubicacionActiva) throw new Error('El dispositivo sigue pausado.');
+      this.assignments.update((items) => items.map((item) => item.idUsuarioDispositivo === device.idUsuarioDispositivo
+        ? { ...item, ubicacionActiva: updated.ubicacionActiva } : item));
+      this.notice.set('Ubicación activada. El acceso depende de la visibilidad y los permisos de cada grupo.');
+      void this.locations.refresh();
+    } catch {
+      this.error.set('No se pudo activar la ubicación del dispositivo.');
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   protected groupSharing(groupId: number): GroupSharing | undefined {
     return this.sharing().find((item) => item.idGrupo === groupId);
+  }
+
+  protected permissionFor(groupId: number) {
+    return this.permissionSummary().find((item) => item.group.idGrupo === groupId);
   }
 
   protected isSharing(groupId: number): boolean {

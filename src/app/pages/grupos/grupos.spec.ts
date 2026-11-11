@@ -43,6 +43,35 @@ describe('Grupos', () => {
   it('shows groups loaded from the backend', () => {
     expect(fixture.nativeElement.querySelectorAll('.group-card')).toHaveLength(1);
     expect(fixture.nativeElement.textContent).toContain('Familia');
+    expect(fixture.nativeElement.querySelector('.group-card .card-actions .members-toggle')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.group-card .invite-toggle')).toBeNull();
+  });
+
+  it('keeps the device selector associated with its label', async () => {
+    http.get.mockImplementation((url: string) => of(url.endsWith('/groups')
+      ? [{ idGrupo: 1, nombre: 'Familia', idCreador: 1, estado: true, miembros: [member] }]
+      : url.endsWith('/user-devices/me')
+        ? [{ idUsuarioDispositivo: 9, alias: 'GPS', visibilidadPreferida: 'GRUPO', ubicacionActiva: true }]
+        : []));
+    fixture.destroy();
+    fixture = TestBed.createComponent(Grupos);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const label = fixture.nativeElement.querySelector('.assignment-picker') as HTMLLabelElement;
+    expect(label.textContent).toContain('Permisos del dispositivo');
+    expect(label.control).toBe(label.querySelector('select'));
+    expect(fixture.nativeElement.querySelector('.sharing-summary')?.textContent).toContain('Familia');
+  });
+
+  it('opens the invitation form from the card details', async () => {
+    (fixture.nativeElement.querySelector('.members-toggle') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.members-panel .invite-toggle') as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(fixture.nativeElement.querySelector('.group-card .invite-form input[type="search"]')).toBeTruthy();
   });
 
   it('shows member names and roles from the group members API', async () => {
@@ -115,6 +144,38 @@ describe('Grupos', () => {
     (fixture.nativeElement.querySelector('.switch') as HTMLButtonElement).click();
     await fixture.whenStable();
     expect(http.patch).toHaveBeenCalledWith(expect.stringContaining('/user-devices/9/groups/1/sharing'), { comparteUbicacion: true });
+  });
+
+  it('shows paused sharing as ineffective in the permission summary', async () => {
+    http.get.mockImplementation((url: string) => {
+      if (url.endsWith('/groups')) return of([{ idGrupo: 1, nombre: 'Familia', estado: true, miembros: [member] }]);
+      if (url.endsWith('/user-devices/me')) return of([{ idUsuarioDispositivo: 9, alias: 'GPS', visibilidadPreferida: 'GRUPO', ubicacionActiva: false }]);
+      if (url.endsWith('/user-devices/9/groups-sharing')) return of([{ idGrupo: 1, nombre: 'Familia', compartiendo: true, miembrosExcluidos: [] }]);
+      return of([]);
+    });
+    fixture.destroy();
+    fixture = TestBed.createComponent(Grupos);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.group-state > span').textContent).toContain('Pausado');
+    expect(fixture.nativeElement.querySelector('.sharing-summary .summary-status').textContent).toContain('Pausado');
+    expect(fixture.nativeElement.querySelector('.sharing-summary .summary-status').classList.contains('is-active')).toBe(false);
+    expect(fixture.nativeElement.querySelector('.intro').textContent).toContain('0 con acceso');
+
+    const activate = fixture.nativeElement.querySelector('.device-notice button') as HTMLButtonElement;
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
+    activate.click();
+    expect(http.patch).not.toHaveBeenCalled();
+
+    http.patch.mockReturnValueOnce(of({ ubicacionActiva: true }));
+    activate.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(http.patch).toHaveBeenCalledWith(expect.stringContaining('/user-devices/9'), { ubicacionActiva: true });
+    expect(fixture.nativeElement.querySelector('.device-notice')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.group-state > span').textContent).toContain('Activo');
+    expect(fixture.nativeElement.querySelector('.sharing-summary .summary-status').classList.contains('is-active')).toBe(true);
+    expect(fixture.nativeElement.querySelector('.intro').textContent).toContain('1 con acceso');
   });
 
   afterEach(() => vi.restoreAllMocks());
