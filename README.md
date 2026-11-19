@@ -2,6 +2,38 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.7.
 
+## Contrato pendiente: historial de GPS compartidos sin reportes recientes
+
+La página `/historial` consulta los GPS propios con `GET /user-devices/me` y necesita
+`GET /locations/history-sources` (autenticado) para los GPS de otras personas cuyo
+historial **continúa autorizado**, incluso si dejaron de reportar ubicaciones.
+Respuesta esperada:
+
+```json
+[
+  {
+    "idUsuarioDispositivo": 42,
+    "idUsuario": 12,
+    "alias": "GPS de Ana",
+    "codigoDispositivo": "PUL-123"
+  }
+]
+```
+
+El backend debe devolver `[]` cuando no haya dispositivos compartidos autorizados;
+no debe depender de `/locations/visible` ni de la vigencia de la última posición.
+Al revocarse el permiso, debe retirar el GPS de esta lista y denegar
+`GET /locations/user-device/{id}/history` (403), también para periodos anteriores.
+Si el GPS simplemente deja de transmitir y el permiso sigue vigente, ambas
+consultas deben seguir funcionando. El frontend cruza la lista con los contactos
+que comparten su ubicación, actualiza los permisos ante notificaciones y borra
+el historial seleccionado si se retira el acceso.
+
+**Compatibilidad:** mientras el servidor responda 404 a `/locations/history-sources`,
+el selector vuelve a usar los GPS de `/locations/visible`. En ese caso todavía no
+se puede consultar el historial de un GPS compartido que haya desaparecido de
+esa lista; otros errores no habilitan esa alternativa.
+
 ## Development server
 
 To start a local development server, run:

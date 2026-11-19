@@ -4,39 +4,89 @@
       (mapInitialized)="onMapInitialized($event)">
       @for (marker of markers(); track marker.id) {
         <map-marker [position]="marker.position" [title]="marker.title" [options]="marker.options"
-          (mapClick)="selectMarker(marker)" />
+          (mapMouseover)="showMarkerPreview(marker, $event)" (mapMouseout)="schedulePreviewHide(marker)"
+          (mapClick)="selectMarker(marker, $event)" />
       }
     </google-map>
-    <div #markerAccess class="marker-access" role="group" aria-label="Ubicaciones disponibles" tabindex="-1">
-      @for (marker of markers(); track marker.id) {
-        <button type="button" [attr.data-marker-id]="marker.id" (click)="selectMarker(marker)">
-          Ver ubicación de {{ marker.title }}
-        </button>
-      }
-    </div>
+    <div #mapFocus class="map-focus-anchor" tabindex="-1" role="group" aria-label="Mapa de ubicaciones">Mapa de ubicaciones</div>
     @if (selectedMarker(); as marker) {
-      <section class="marker-details" aria-labelledby="marker-details-title">
+      <section class="marker-details" aria-labelledby="marker-details-title"
+        [style.left.px]="previewPosition()?.left" [style.top.px]="previewPosition()?.top"
+        (mouseenter)="cancelPreviewHide()" (mouseleave)="onPreviewLeave()">
         <div class="marker-details-heading">
           <div>
             <p class="marker-details-eyebrow">{{ marker.kind === 'self' ? 'Tu posición' : marker.kind === 'public' ? 'Ubicación pública' : 'Ubicación compartida' }}</p>
-            <h2 #detailsTitle id="marker-details-title" tabindex="-1">{{ marker.title }}</h2>
+            @if (marker.observation) {
+              <h2 #detailsTitle id="marker-details-title" tabindex="-1">
+                <button type="button" class="marker-details-toggle"
+                  [attr.aria-expanded]="expandedMarkerId() === marker.id"
+                  [attr.aria-controls]="'marker-details-extra-' + marker.id"
+                  [attr.aria-label]="(expandedMarkerId() === marker.id ? 'Ocultar' : 'Ver') + ' información completa de ' + marker.title"
+                  (click)="toggleMarkerDetails(marker.id)">
+                  <span>{{ marker.title }}</span>
+                  <svg class="marker-chevron" [class.is-expanded]="expandedMarkerId() === marker.id"
+                    viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="m5 9 7 7 7-7" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </h2>
+            } @else {
+              <h2 #detailsTitle id="marker-details-title" tabindex="-1">{{ marker.title }}</h2>
+            }
           </div>
           <button class="marker-details-close" type="button" aria-label="Cerrar detalles de ubicación" (click)="closeDetails()">×</button>
         </div>
         @if (marker.deviceLabel) { <p>Dispositivo: {{ marker.deviceLabel }}</p> }
+        @if (marker.publicCode) { <p>Emergencia pública · código {{ marker.publicCode }}. Solo consulta.</p> }
         @if (marker.kind === 'self') {
           <p>Ubicación obtenida de este navegador.</p>
         } @else {
-          <p>Última actualización: <time [attr.datetime]="marker.updatedAt || null">{{ relativeTime(marker.updatedAt) }}</time></p>
+          @if (validCaptureTime(marker.updatedAt)) {
+            <p>Última posición registrada: <time [attr.datetime]="marker.updatedAt">{{ marker.updatedAt | date: 'short' }}</time> ({{ relativeTime(marker.updatedAt) }})</p>
+          } @else {
+            <p>Hora de captura no disponible.</p>
+          }
+          @if (marker.observation; as location) {
+            @if (marker.emergencyActive) { <p class="emergency-note">Emergencia activa · solo consulta</p> }
+            <p>{{ freshness(location) }}@if (approximate(location)) { · Posición aproximada }</p>
+            <div class="marker-details-extra" [id]="'marker-details-extra-' + marker.id"
+              [hidden]="expandedMarkerId() !== marker.id">
+              @if (expandedMarkerId() === marker.id) {
+                <p>Capturada: <time [attr.datetime]="location.fechaHoraDispositivo">{{ location.fechaHoraDispositivo | date: 'short' }}</time></p>
+                @if (location.fueSincronizadaOffline) { <p>Recibida tras recuperar la conexión.</p> }
+                @if (location.precisionGps !== null && location.precisionGps !== undefined) {
+                  <p>Precisión reportada: {{ location.precisionGps }} m</p>
+                }
+                <p>Coordenadas: {{ location.latitud }}, {{ location.longitud }}</p>
+              }
+            </div>
+          }
         }
       </section>
     }
+    @if (unlocatedEmergencies().length) {
+      <div class="unlocated-emergencies" role="status">
+        <strong>Emergencias públicas sin ubicación disponible</strong>
+        <ul>
+          @for (emergency of unlocatedEmergencies(); track emergency.clavePublica) {
+            <li>Código {{ emergency.codigoPublico }} · Ubicación no disponible</li>
+          }
+        </ul>
+      </div>
+    }
   } @else {
-    <p class="map-error" role="status">Esperando una ubicación visible del contacto…</p>
+    <p #emptyMap class="map-error" role="status" tabindex="-1">Esperando una ubicación visible del contacto…</p>
   }
   @if (locations.error()) {
     <div class="location-notice location-warning" role="alert">
       {{ locations.error() }} <button type="button" (click)="locations.refresh()">Reintentar</button>
+    </div>
+  }
+  @if (publicError()) {
+    <div class="location-notice location-warning" role="alert">
+      No se pudieron actualizar todos los marcadores públicos.
+      <button type="button" (click)="loadPublicLocations()">Reintentar</button>
     </div>
   }
   @if (locating()) {

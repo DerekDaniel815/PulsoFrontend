@@ -1,12 +1,35 @@
 import { provideHttpClient } from '@angular/common/http';
-import { signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component, input, output, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { SessionStore } from '../../core/auth/session-store';
 import { ContactRecord } from '../../core/contacts/contacts-api';
 import { VisibleLocation, LocationsStore } from '../../core/locations/locations-store';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
 import { OverviewStore } from '../../core/overview/overview-store';
 import { LiveMap } from './live-map';
+
+@Component({ selector: 'google-map', template: '<ng-content />' })
+class GoogleMapStub {
+  readonly height = input('');
+  readonly width = input('');
+  readonly center = input<google.maps.LatLngLiteral>();
+  readonly zoom = input(0);
+  readonly options = input<google.maps.MapOptions>();
+  readonly mapInitialized = output<google.maps.Map>();
+}
+
+@Component({ selector: 'map-marker', template: '' })
+class MapMarkerStub {
+  readonly position = input<google.maps.LatLngLiteral>();
+  readonly title = input('');
+  readonly options = input<google.maps.MarkerOptions>();
+  readonly mapClick = output<void>();
+  readonly mapMouseover = output<google.maps.MapMouseEvent>();
+  readonly mapMouseout = output<google.maps.MapMouseEvent>();
+}
 
 describe('LiveMap for a selected contact', () => {
   const visible = signal<VisibleLocation[]>([]);
@@ -137,6 +160,8 @@ describe('LiveMap for a selected contact', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance['selectedMarker']()?.title).toBe('Ana Ruiz');
     expect(fixture.componentInstance['relativeTime'](marker.updatedAt)).toBe('Hace 3 minutos');
+    fixture.componentInstance['toggleMarkerDetails'](marker.id);
+    expect(fixture.componentInstance['expandedMarkerId']()).toBe(marker.id);
 
     visible.update((items) => [{
       ...items[0], location: { ...items[0].location, fechaHoraDispositivo: '2026-10-26T12:02:00Z' },
@@ -147,6 +172,7 @@ describe('LiveMap for a selected contact', () => {
     visible.set([visible()[1]]);
     fixture.detectChanges();
     expect(fixture.componentInstance['selectedMarker']()).toBeNull();
+    expect(fixture.componentInstance['expandedMarkerId']()).toBeNull();
   });
 
   it('does not expose a name for an authorized group member without a contact record', () => {
@@ -155,5 +181,274 @@ describe('LiveMap for a selected contact', () => {
     fixture.componentInstance['ready'].set(true);
     fixture.detectChanges();
     expect(fixture.componentInstance['markers']()[0].title).toBe('Dispositivo autorizado');
+  });
+
+  it('removes a hover preview immediately when the location is no longer authorized', () => {
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    fixture.componentInstance['showMarkerPreview'](fixture.componentInstance['markers']()[0]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarker']()?.id).toBe('1');
+
+    visible.set([visible()[1]]);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarker']()).toBeNull();
+    expect(fixture.componentInstance['hoveredMarkerId']()).toBeNull();
+  });
+});
+
+describe('LiveMap marker details', () => {
+  const visible = signal<VisibleLocation[]>([]);
+
+  beforeEach(async () => {
+    visible.set([{
+      assignment: {
+        idUsuarioDispositivo: 1, idUsuario: 12, alias: 'GPS de Ana',
+        codigoDispositivo: 'A', visibilidadPreferida: 'GRUPO', ubicacionActiva: true,
+      },
+      location: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:00:00Z', precisionGps: 8,
+      },
+      emergenciaActiva: false,
+    }]);
+    vi.stubGlobal('google', {
+      maps: {
+        ControlPosition: { LEFT_BOTTOM: 1, RIGHT_BOTTOM: 2 },
+        Size: class { constructor(_width: number, _height: number) {} },
+        Point: class { constructor(_x: number, _y: number) {} },
+      },
+    });
+    await TestBed.configureTestingModule({
+      imports: [LiveMap],
+      providers: [
+        provideHttpClient(),
+        { provide: GoogleMapsLoader, useValue: { load: () => new Promise<void>(() => {}) } },
+        { provide: SessionStore, useValue: {
+          isAuthenticated: signal(true),
+          user: signal({ idUsuario: 50, nombres: 'Lucía', apellidos: 'García' }),
+        } },
+        { provide: LocationsStore, useValue: { locations: visible, error: signal(null) } },
+        { provide: OverviewStore, useValue: { contacts: signal([{
+          contacto: { idUsuario: 12, nombres: 'Ana', apellidos: 'Ruiz' },
+        }]) } },
+      ],
+    }).overrideComponent(LiveMap, {
+      set: { imports: [GoogleMapStub, MapMarkerStub, DatePipe] },
+    }).compileComponents();
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('shows the last recorded position and its capture time when it is not live', () => {
+    visible.update((items) => [{
+      ...items[0],
+      location: { ...items[0].location, isLive: false },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.componentInstance['now'].set(Date.parse('2026-11-19T12:00:20Z'));
+    fixture.detectChanges();
+    fixture.componentInstance['showMarkerPreview'](fixture.componentInstance['markers']()[0]);
+    fixture.detectChanges();
+
+    const details = fixture.nativeElement.querySelector('.marker-details') as HTMLElement;
+    expect(details.textContent).toContain('Última posición registrada:');
+    expect(details.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-19T12:00:00Z');
+    expect(details.textContent).toContain('Última ubicación conocida · puede no ser la posición actual');
+    expect(details.textContent).not.toContain('Ubicación anterior; no indica la posición actual');
+  });
+
+  it('keeps the recent label for a position whose server validity has not expired', () => {
+    visible.update((items) => [{
+      ...items[0],
+      location: {
+        ...items[0].location,
+        fechaHoraServidor: '2026-11-19T12:00:05Z',
+        liveExpiresAt: '2026-11-19T12:01:05Z',
+        isLive: true,
+      },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.componentInstance['now'].set(Date.parse('2026-11-19T12:00:20Z'));
+    fixture.detectChanges();
+    fixture.componentInstance['showMarkerPreview'](fixture.componentInstance['markers']()[0]);
+    fixture.detectChanges();
+
+    expect((fixture.nativeElement.querySelector('.marker-details') as HTMLElement).textContent)
+      .toContain('Ubicación reciente');
+  });
+
+  it('does not invent a capture time when the device did not provide one', () => {
+    visible.update((items) => [{
+      ...items[0],
+      location: { ...items[0].location, fechaHoraDispositivo: '' },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    fixture.componentInstance['showMarkerPreview'](fixture.componentInstance['markers']()[0]);
+    fixture.detectChanges();
+
+    const details = fixture.nativeElement.querySelector('.marker-details') as HTMLElement;
+    expect(details.textContent).toContain('Hora de captura no disponible');
+    expect(details.querySelector('time')).toBeNull();
+  });
+
+  it('previews basic data on marker hover and expands the details with the arrow', () => {
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    const mapMarker = fixture.debugElement.query(By.directive(MapMarkerStub)).componentInstance as MapMarkerStub;
+    vi.spyOn(fixture.nativeElement, 'getBoundingClientRect').mockReturnValue({
+      left: 0, top: 0, width: 900, height: 600, right: 900, bottom: 600,
+      x: 0, y: 0, toJSON: () => ({}),
+    });
+    mapMarker.mapMouseover.emit({
+      domEvent: new MouseEvent('mousemove', { clientX: 500, clientY: 300 }),
+    } as google.maps.MapMouseEvent);
+    fixture.detectChanges();
+
+    const toggle = fixture.nativeElement.querySelector('.marker-details-toggle') as HTMLButtonElement;
+    const details = fixture.nativeElement.querySelector('.marker-details-extra') as HTMLElement;
+    expect((fixture.nativeElement.querySelector('.marker-details') as HTMLElement).style.left).toBe('516px');
+    expect(fixture.nativeElement.querySelector('.marker-access')).toBeNull();
+    expect(toggle.textContent).toContain('Ana Ruiz');
+    expect(fixture.nativeElement.textContent).toContain('Dispositivo: GPS de Ana');
+    expect(toggle.querySelector('.marker-chevron')).not.toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.getAttribute('aria-controls')).toBe(details.id);
+    expect(details.hidden).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Coordenadas:');
+    expect(fixture.componentInstance['selectedMarkerId']()).toBeNull();
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance['selectedMarkerId']()).toBe('1');
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(details.hidden).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Precisión reportada: 8 m');
+    expect(fixture.nativeElement.textContent).toContain('Coordenadas: 40.5, -3.7');
+
+    toggle.click();
+    fixture.detectChanges();
+    expect(details.hidden).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Coordenadas:');
+  });
+
+  it('hides a hover preview on mouse leave, while a marker click keeps the summary open', () => {
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    const mapMarker = fixture.debugElement.query(By.directive(MapMarkerStub)).componentInstance as MapMarkerStub;
+    mapMarker.mapMouseover.emit({} as google.maps.MapMouseEvent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.marker-details')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('.marker-details') as HTMLElement)
+      .dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.marker-details')).toBeNull();
+
+    mapMarker.mapClick.emit();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.marker-details')).not.toBeNull();
+    (fixture.nativeElement.querySelector('.marker-details') as HTMLElement)
+      .dispatchEvent(new MouseEvent('mouseleave'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.marker-details')).not.toBeNull();
+  });
+
+  it('returns focus to a marker activated with the keyboard after closing its preview', () => {
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    const keyboardMarker = document.createElement('button');
+    keyboardMarker.textContent = 'Marcador accesible';
+    fixture.nativeElement.appendChild(keyboardMarker);
+    keyboardMarker.addEventListener('keydown', (event) => {
+      fixture.componentInstance['selectMarker'](
+        fixture.componentInstance['markers']()[0],
+        { domEvent: event } as google.maps.MapMouseEvent,
+      );
+    });
+    keyboardMarker.focus();
+    keyboardMarker.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Enter' }));
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('#marker-details-title'));
+
+    (fixture.nativeElement.querySelector('.marker-details-close') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(keyboardMarker);
+  });
+});
+
+describe('LiveMap público', () => {
+  it('combines anonymous public locations and emergency markers without personal data', async () => {
+    const authenticated = signal(false);
+    vi.stubGlobal('google', {
+      maps: {
+        ControlPosition: { LEFT_BOTTOM: 1, RIGHT_BOTTOM: 2 },
+        Size: class { constructor(_width: number, _height: number) {} },
+        Point: class { constructor(_x: number, _y: number) {} },
+      },
+    });
+    try {
+      await TestBed.configureTestingModule({
+        imports: [LiveMap],
+        providers: [
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          { provide: GoogleMapsLoader, useValue: { load: () => new Promise<void>(() => {}) } },
+          { provide: SessionStore, useValue: {
+            isAuthenticated: authenticated, user: signal(null),
+          } },
+          { provide: LocationsStore, useValue: { locations: signal([]), error: signal(null) } },
+          { provide: OverviewStore, useValue: { contacts: signal([]) } },
+        ],
+      }).overrideComponent(LiveMap, { set: { template: '', imports: [] } }).compileComponents();
+      const fixture = TestBed.createComponent(LiveMap);
+      fixture.componentInstance['ready'].set(true);
+      fixture.detectChanges();
+      const http = TestBed.inject(HttpTestingController);
+      http.expectOne((request) => request.url.endsWith('/locations/public')).flush([{
+        clavePublica: 'VIS-123', origen: 'PUBLICO', ubicacion: { latitud: -12, longitud: -77 },
+      }]);
+      http.expectOne((request) => request.url.endsWith('/emergencies/public')).flush([{
+        clavePublica: 'EME-ABC', codigoPublico: 'EME-ABC', estado: 'ACTIVA',
+        ubicacion: { latitud: -13, longitud: -78 },
+        nombres: 'No mostrar',
+      }, {
+        clavePublica: 'EME-SIN', codigoPublico: 'EME-SIN', estado: 'ACTIVA',
+        ubicacion: null,
+      }]);
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.componentInstance['markers']().map((item) => item.id)).toEqual([
+          'public-VIS-123', 'public-EME-ABC',
+        ]);
+      });
+      expect(fixture.componentInstance['markers']()[1].publicCode).toBe('EME-ABC');
+      expect(fixture.componentInstance['markers']()[1].title).toBe('Emergencia pública');
+      expect(fixture.componentInstance['markers']()[1].title).not.toContain('No mostrar');
+      expect(fixture.componentInstance['unlocatedEmergencies']().map((item) => item.codigoPublico)).toEqual(['EME-SIN']);
+
+      authenticated.set(true);
+      fixture.detectChanges();
+      expect(fixture.componentInstance['markers']()).toEqual([]);
+      expect(fixture.componentInstance['unlocatedEmergencies']()).toEqual([]);
+      http.verify();
+      fixture.destroy();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

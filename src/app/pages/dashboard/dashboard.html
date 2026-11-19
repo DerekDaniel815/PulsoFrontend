@@ -4,17 +4,17 @@
       <article class="card kpi kpi-ok">
         <div class="kpi-top">
           <p>ESTADO DE UBICACIÓN</p>
-          <span class="tag live">{{ locationStore.connected() ? 'LIVE' : 'REST' }}</span>
+          <span class="tag live">{{ locationStore.connected() ? 'CANAL CONECTADO' : 'CANAL DESCONECTADO' }}</span>
         </div>
         <h2>{{ locations().length }} visibles</h2>
         <small>Ubicaciones autorizadas por el servidor</small>
       </article>
       <article class="card kpi kpi-info">
         <div class="kpi-top">
-          <p>VISIBILIDAD</p>
-          <span class="tag">PRIVADO</span>
+          <p>ACCESO</p>
+          <span class="tag">AUTORIZADO</span>
         </div>
-        <h2>Solo autorizados</h2>
+        <h2>Datos permitidos</h2>
         <small>El servidor controla el acceso</small>
       </article>
       <article class="card kpi">
@@ -50,7 +50,7 @@
   <section class="stage" [class.has-panels]="isAuthenticated()">
     <div class="map">
       <app-live-map [overlayLayout]="mapExpanded()" />
-      <div class="map-overlay"><span aria-hidden="true">●</span> Vista ciudad · Tiempo real</div>
+      <div class="map-overlay"><span aria-hidden="true">●</span> Últimas ubicaciones autorizadas</div>
       <div class="map-foot">
         @if (isAuthenticated()) {
           <ul class="legend">

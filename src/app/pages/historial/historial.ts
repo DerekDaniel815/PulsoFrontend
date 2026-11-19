@@ -1,13 +1,30 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
+import { SessionStore } from '../../core/auth/session-store';
+import { LocationsStore } from '../../core/locations/locations-store';
+import { OverviewStore } from '../../core/overview/overview-store';
 
 interface Assignment {
   idUsuarioDispositivo: number;
   alias: string | null;
   dispositivo?: { codigoDispositivo?: string };
+}
+
+interface HistorySource {
+  id: number;
+  label: string;
+}
+
+// El servidor solo devuelve asignaciones cuyo historial sigue autorizado,
+// independientemente de que el GPS esté reportando en este momento.
+interface SharedHistorySource {
+  idUsuarioDispositivo: number;
+  idUsuario: number;
+  alias: string | null;
+  codigoDispositivo: string;
 }
 
 interface HistoryLocation {
@@ -28,9 +45,41 @@ type Period = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
 })
 export class Historial {
   private readonly http = inject(HttpClient);
+  private readonly session = inject(SessionStore);
+  private readonly locations = inject(LocationsStore);
+  private readonly overview = inject(OverviewStore);
   private requestGeneration = 0;
-  protected readonly assignments = signal<Assignment[]>([]);
+  private sourceGeneration = 0;
+  private readonly ownAssignments = signal<Assignment[]>([]);
+  private readonly sharedAssignments = signal<SharedHistorySource[] | null>([]);
+  protected readonly sourceError = signal<string | null>(null);
+  protected readonly historySourcesUnavailable = computed(() => this.sharedAssignments() === null);
+  protected readonly sources = computed<HistorySource[]>(() => {
+    if (!this.session.isAuthenticated()) return [];
+    const own = this.ownAssignments().map((item) => ({
+      id: item.idUsuarioDispositivo,
+      label: `Mi dispositivo · ${item.alias || item.dispositivo?.codigoDispositivo || item.idUsuarioDispositivo}`,
+    }));
+    const contacts = new Map(this.overview.contacts()
+      .filter((record) => record.estado === 'ACEPTADO' && record.contactoComparteUbicacion)
+      .map((record) => [record.contacto.idUsuario, record.contacto]));
+    // Solo el 404 del endpoint nuevo usa el listado de ubicaciones visibles
+    // como compatibilidad; nunca se usa como sustituto tras un error de permisos.
+    const sharedAssignments = this.sharedAssignments() ?? this.locations.locations().map((item) => item.assignment);
+    const shared = sharedAssignments
+      .filter((item) => contacts.has(item.idUsuario))
+      .map((item) => {
+        const person = contacts.get(item.idUsuario)!;
+        return {
+          id: item.idUsuarioDispositivo,
+          label: `${person.nombres} ${person.apellidos} · ${item.alias || item.codigoDispositivo}`,
+        };
+      });
+    return [...own, ...shared.filter((item) => !own.some((mine) => mine.id === item.id))];
+  });
   protected readonly selectedId = signal<number | null>(null);
+  protected readonly selectedSource = computed(() =>
+    this.sources().find((source) => source.id === this.selectedId()) ?? null);
   protected readonly period = signal<Period>('today');
   protected readonly date = signal('');
   protected readonly points = signal<HistoryLocation[]>([]);
@@ -64,28 +113,82 @@ export class Historial {
     return distance.toFixed(1);
   });
   protected readonly loading = signal(true);
+  private readonly initialized = signal(false);
   protected readonly error = signal<string | null>(null);
 
-  constructor() { void this.loadAssignments(); }
+  constructor() {
+    effect(() => {
+      if (this.session.isAuthenticated()) return;
+      this.sourceGeneration++;
+      this.sharedAssignments.set([]);
+      this.ownAssignments.set([]);
+    });
+    effect(() => {
+      const version = this.locations.notificationVersion();
+      if (version > 0 && this.initialized() && this.session.isAuthenticated()) {
+        void this.refreshSources();
+      }
+    });
+    effect(() => {
+      if (!this.initialized()) return;
+      const sources = this.sources();
+      const id = this.selectedId();
+      if (!this.session.isAuthenticated() ||
+          (id !== null && !sources.some((item) => item.id === id)) ||
+          (id === null && sources.length > 0)) {
+        this.requestGeneration++;
+        this.points.set([]);
+        this.error.set(null);
+        this.selectedId.set(this.session.isAuthenticated() ? sources[0]?.id ?? null : null);
+        if (this.selectedId() !== null) void this.refresh();
+        else this.loading.set(false);
+      }
+    });
+    void this.loadAssignments();
+  }
 
   private async loadAssignments(): Promise<void> {
+    const [own] = await Promise.allSettled([
+      firstValueFrom(this.http.get<Assignment[]>(`${PULSO_API_URL}/user-devices/me`)),
+      this.overview.refresh(),
+      this.locations.refresh(),
+      this.refreshSources(),
+    ]);
+    if (own.status === 'fulfilled') this.ownAssignments.set(own.value);
+    else this.error.set('No se pudieron cargar tus dispositivos.');
+    this.initialized.set(true);
+    if (!this.sources().length) this.loading.set(false);
+  }
+
+  protected async refreshSources(): Promise<void> {
+    if (!this.session.isAuthenticated()) return;
+    const generation = ++this.sourceGeneration;
     try {
-      const assignments = await firstValueFrom(
-        this.http.get<Assignment[]>(`${PULSO_API_URL}/user-devices/me`),
-      );
-      this.assignments.set(assignments);
-      if (assignments.length) {
-        this.selectedId.set(assignments[0].idUsuarioDispositivo);
-        await this.refresh();
-      } else this.loading.set(false);
-    } catch {
-      this.error.set('No se pudieron cargar los dispositivos.');
-      this.loading.set(false);
+      const sources = await firstValueFrom(this.http.get<SharedHistorySource[]>(
+        `${PULSO_API_URL}/locations/history-sources`,
+      ));
+      if (generation !== this.sourceGeneration || !this.session.isAuthenticated()) return;
+      this.sharedAssignments.set(sources);
+      this.sourceError.set(null);
+    } catch (error: unknown) {
+      if (generation !== this.sourceGeneration || !this.session.isAuthenticated()) return;
+      if (error instanceof HttpErrorResponse && error.status === 404) {
+        this.sharedAssignments.set(null);
+        this.sourceError.set(null);
+      } else {
+        this.sharedAssignments.set([]);
+        this.sourceError.set('No se pudieron comprobar los dispositivos con historial compartido.');
+      }
     }
   }
 
   protected selectAssignment(event: Event): void {
-    this.selectedId.set(Number((event.target as HTMLSelectElement).value));
+    const id = Number((event.target as HTMLSelectElement).value);
+    if (!this.sources().some((source) => source.id === id)) return;
+    this.requestGeneration++;
+    this.points.set([]);
+    this.error.set(null);
+    this.selectedId.set(id);
     void this.refresh();
   }
 
@@ -103,7 +206,8 @@ export class Historial {
 
   protected async refresh(): Promise<void> {
     const id = this.selectedId();
-    if (id === null) return;
+    if (id === null || !this.session.isAuthenticated() ||
+        !this.sources().some((source) => source.id === id)) return;
     const generation = ++this.requestGeneration;
     const now = new Date();
     const start = this.period() === 'custom' ? new Date(`${this.date()}T00:00:00`) : new Date(now);
@@ -116,23 +220,30 @@ export class Historial {
       ? new Date(start.getTime() + 86_400_000 - 1)
       : now;
     this.loading.set(true);
+    this.points.set([]);
+    this.error.set(null);
     try {
       const params = new HttpParams().set('from', start.toISOString()).set('to', end.toISOString());
       const points = await firstValueFrom(this.http.get<HistoryLocation[]>(
         `${PULSO_API_URL}/locations/user-device/${id}/history`, { params },
       ));
-      if (generation === this.requestGeneration) {
+      if (generation === this.requestGeneration && this.session.isAuthenticated() &&
+          this.sources().some((source) => source.id === id)) {
         this.points.set(points);
-        this.error.set(null);
       }
-    } catch {
-      if (generation === this.requestGeneration) this.error.set('No se pudo cargar el historial.');
+    } catch (error: unknown) {
+      if (generation === this.requestGeneration && this.sources().some((source) => source.id === id)) {
+        this.error.set(error instanceof HttpErrorResponse && (error.status === 403 || error.status === 404)
+          ? 'El servidor no autoriza consultar el historial de este dispositivo.'
+          : 'No se pudo cargar el historial.');
+      }
     } finally {
       if (generation === this.requestGeneration) this.loading.set(false);
     }
   }
 
   protected exportData(): void {
+    if (this.loading() || this.error() || !this.selectedSource() || !this.points().length) return;
     const rows = [
       ['Fecha', 'Latitud', 'Longitud', 'Precisión GPS'],
       ...this.points().map((point) => [

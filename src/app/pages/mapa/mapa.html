@@ -1,0 +1,30 @@
+<section class="map-page" aria-labelledby="map-title">
+  <header class="map-heading">
+    <div>
+      <p class="eyebrow">Ubicaciones autorizadas</p>
+      <h1 id="map-title">{{ selectedUserId() ? 'Seguimiento de ' + personName() : 'Mapa interactivo' }}</h1>
+    </div>
+    <span class="connection" [class.is-connected]="locations.connected()" role="status">
+      {{ locations.connected() ? 'Canal de actualizaciones conectado' : 'Canal de actualizaciones desconectado' }}
+    </span>
+  </header>
+  <div class="map-canvas">
+    <app-live-map [selectedUserId]="selectedUserId()" />
+    <div class="map-label"><span aria-hidden="true">●</span> {{ selectedUserId() ? 'Última ubicación autorizada' : 'Ubicaciones autorizadas' }}</div>
+    <div class="map-legend" aria-label="Leyenda del mapa">
+      <span><i class="connected" aria-hidden="true"></i> Ubicación visible</span>
+      <span><i class="emergency" aria-hidden="true"></i> Emergencia</span>
+    </div>
+  </div>
+  @if (selectedUserId()) {
+    @if (refreshing() && selectedLocations().length === 0) {
+      <p class="map-help" role="status">Comprobando la ubicación compartida del contacto…</p>
+    } @else if (selectedLocations().length === 0 && !locations.error()) {
+      <p class="map-help" role="status">No hay una ubicación autorizada disponible para esta persona. Puede que aún no haya reportado una posición o que el permiso haya cambiado.</p>
+    } @else {
+      <p class="map-help">Las posiciones mostradas son la última ubicación reportada, no una garantía de dónde está la persona ahora.</p>
+    }
+  } @else {
+    <p class="map-help">Solo aparecen ubicaciones que el servidor te permite ver. <a routerLink="/contactos">Gestionar contactos</a></p>
+  }
+</section>
