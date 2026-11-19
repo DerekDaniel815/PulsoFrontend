@@ -5,6 +5,20 @@ import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../auth/session-store';
 import { PULSO_API_URL, REMOTE_API_URL } from '../auth/auth.config';
 
+export interface LocationData {
+  idUsuarioDispositivo: number;
+  latitud: number;
+  longitud: number;
+  fechaHoraDispositivo: string;
+  fechaHoraServidor?: string;
+  precisionGps?: number | null;
+  locationSource?: 'GNSS' | 'CELL' | 'NETWORK';
+  isApproximate?: boolean;
+  isLive?: boolean;
+  liveExpiresAt?: string | null;
+  fueSincronizadaOffline?: boolean;
+}
+
 export interface VisibleLocation {
   assignment: {
     idUsuarioDispositivo: number;
@@ -14,12 +28,7 @@ export interface VisibleLocation {
     visibilidadPreferida: string;
     ubicacionActiva: boolean;
   };
-  location: {
-    idUsuarioDispositivo: number;
-    latitud: number;
-    longitud: number;
-    fechaHoraDispositivo: string;
-  };
+  location: LocationData;
   emergenciaActiva: boolean;
 }
 
@@ -29,6 +38,8 @@ export class LocationsStore {
   private readonly session = inject(SessionStore);
   private socket: Socket | null = null;
   private generation = 0;
+  private realtimeVersion = 0;
+  private fetchVersion = 0;
   private readonly locationsState = signal<VisibleLocation[]>([]);
   readonly locations = this.locationsState.asReadonly();
   readonly error = signal<string | null>(null);
@@ -39,6 +50,8 @@ export class LocationsStore {
     effect(() => {
       const token = this.session.isAuthenticated() ? this.session.token() : null;
       this.generation++;
+      this.realtimeVersion++;
+      this.fetchVersion++;
       this.socket?.removeAllListeners();
       this.socket?.disconnect();
       this.socket = null;
@@ -58,12 +71,16 @@ export class LocationsStore {
       });
       this.socket.on('disconnect', () => this.connected.set(false));
       this.socket.on('notification.created', () => {
-        if (generation === this.generation) this.notificationVersion.update((version) => version + 1);
+        if (generation === this.generation) {
+          this.notificationVersion.update((version) => version + 1);
+          void this.refresh();
+        }
       });
       this.socket.on('location.updated', (payload: unknown) => {
         if (generation !== this.generation) return;
         const item = this.toVisibleLocation(payload);
         if (!item) return;
+        this.realtimeVersion++;
         this.locationsState.update((current) => [
           ...current.filter(
             (existing) => existing.assignment.idUsuarioDispositivo !== item.assignment.idUsuarioDispositivo,
@@ -75,9 +92,13 @@ export class LocationsStore {
         if (generation !== this.generation || typeof payload !== 'object' || payload === null) return;
         const id = (payload as { idUsuarioDispositivo?: unknown }).idUsuarioDispositivo;
         if (typeof id === 'number') {
+          this.realtimeVersion++;
           this.locationsState.update((items) =>
             items.filter((item) => item.assignment.idUsuarioDispositivo !== id),
           );
+          // También puede revocarse el acceso a un GPS que ya estaba offline:
+          // la pantalla de historial debe volver a consultar sus permisos.
+          this.notificationVersion.update((version) => version + 1);
         }
       });
       this.socket.connect();
@@ -88,16 +109,25 @@ export class LocationsStore {
   async refresh(): Promise<void> {
     if (!this.session.isAuthenticated()) return;
     const generation = this.generation;
+    const realtimeVersion = this.realtimeVersion;
+    const fetchVersion = ++this.fetchVersion;
     try {
       const locations = await firstValueFrom(
         this.http.get<VisibleLocation[]>(`${PULSO_API_URL}/locations/visible`),
       );
-      if (generation === this.generation) {
+      if (generation === this.generation && fetchVersion === this.fetchVersion &&
+          realtimeVersion !== this.realtimeVersion) {
+        // Una respuesta anterior a un evento socket nunca debe restaurar una
+        // ubicación cuyo acceso acaba de revocarse.
+        void this.refresh();
+      } else if (generation === this.generation && fetchVersion === this.fetchVersion) {
         this.locationsState.set(locations);
         this.error.set(null);
       }
     } catch {
-      if (generation === this.generation) this.error.set('No se pudieron cargar las ubicaciones.');
+      if (generation === this.generation && fetchVersion === this.fetchVersion) {
+        this.error.set('No se pudieron cargar las ubicaciones.');
+      }
     }
   }
 
@@ -118,6 +148,9 @@ export class LocationsStore {
     const longitud = item.location?.longitud ?? item.longitud;
     if (typeof id !== 'number' || typeof latitud !== 'number' || typeof longitud !== 'number') return null;
     const previous = this.locationsState().find((entry) => entry.assignment.idUsuarioDispositivo === id);
+    const priorLocation = item.location?.fechaHoraDispositivo &&
+      item.location.fechaHoraDispositivo === previous?.location.fechaHoraDispositivo
+      ? previous.location : undefined;
     return {
       assignment: {
         idUsuarioDispositivo: id,
@@ -131,7 +164,14 @@ export class LocationsStore {
         idUsuarioDispositivo: id,
         latitud,
         longitud,
-        fechaHoraDispositivo: item.location?.fechaHoraDispositivo ?? previous?.location.fechaHoraDispositivo ?? '',
+        fechaHoraDispositivo: item.location?.fechaHoraDispositivo ?? '',
+        fechaHoraServidor: item.location?.fechaHoraServidor ?? priorLocation?.fechaHoraServidor,
+        precisionGps: item.location?.precisionGps ?? priorLocation?.precisionGps,
+        locationSource: item.location?.locationSource ?? priorLocation?.locationSource,
+        isApproximate: item.location?.isApproximate ?? priorLocation?.isApproximate,
+        isLive: item.location?.isLive ?? priorLocation?.isLive,
+        liveExpiresAt: item.location?.liveExpiresAt ?? priorLocation?.liveExpiresAt,
+        fueSincronizadaOffline: item.location?.fueSincronizadaOffline ?? priorLocation?.fueSincronizadaOffline,
       },
       emergenciaActiva: item.emergenciaActiva ?? previous?.emergenciaActiva ?? false,
     };

@@ -25,7 +25,7 @@ export interface MapPoint {
   id: string;
   title: string;
   initials: string;
-  status: 'conectado' | 'ausente' | 'sin-conexion' | 'emergencia' | 'yo';
+  status: 'conectado' | 'ausente' | 'sin-conexion' | 'anterior' | 'emergencia' | 'yo';
   position: google.maps.LatLngLiteral;
 }
 
@@ -44,6 +44,7 @@ const STATUS_COLOR: Record<MapPoint['status'], string> = {
   emergencia: '#ff5966',
   ausente: '#ffc044',
   'sin-conexion': '#8195b7',
+  anterior: '#8195b7',
 };
 
 export function markerOptions(point: MapPoint): google.maps.MarkerOptions {

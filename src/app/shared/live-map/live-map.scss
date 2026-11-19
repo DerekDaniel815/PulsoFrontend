@@ -60,6 +60,8 @@ google-map {
   left: 16px;
   z-index: 3;
   width: min(310px, calc(100% - 32px));
+  max-height: calc(100% - 24px);
+  overflow: auto;
   padding: 16px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
@@ -73,6 +75,11 @@ google-map {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.marker-details-heading > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .marker-details-eyebrow {
@@ -90,6 +97,41 @@ google-map {
   line-height: 1.35;
 }
 
+.marker-details-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.marker-details-toggle:hover {
+  color: var(--primary);
+}
+
+.marker-details-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.marker-chevron {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  transition: transform 180ms ease;
+}
+
+.marker-chevron.is-expanded {
+  transform: rotate(180deg);
+}
+
 .marker-details > p {
   margin: 12px 0 0;
   color: var(--text-muted);
@@ -97,8 +139,39 @@ google-map {
   line-height: 1.5;
 }
 
-.marker-details-close,
-.marker-access button {
+.marker-details-extra p {
+  margin: 12px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.marker-details > .emergency-note {
+  color: var(--emergency);
+  font-weight: 700;
+}
+
+.unlocated-emergencies {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  max-width: min(330px, calc(100% - 24px));
+  padding: 12px;
+  border: 1px solid var(--emergency);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+}
+
+.unlocated-emergencies ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.marker-details-close {
   min-width: 36px;
   min-height: 36px;
   border: 1px solid var(--border-strong);
@@ -108,13 +181,12 @@ google-map {
   cursor: pointer;
 }
 
-.marker-details-close:focus-visible,
-.marker-access button:focus-visible {
+.marker-details-close:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-.marker-access {
+.map-focus-anchor {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -122,26 +194,19 @@ google-map {
   clip-path: inset(50%);
 }
 
-.marker-access:focus-within {
-  bottom: 16px;
-  left: 16px;
+.map-focus-anchor:focus {
+  top: 16px;
+  right: 16px;
   z-index: 4;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  width: min(400px, calc(100% - 32px));
+  width: auto;
   height: auto;
-  max-height: 140px;
-  overflow: auto;
-  padding: 8px;
+  overflow: visible;
   clip-path: none;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
+  padding: 8px 12px;
+  border: 2px solid var(--primary);
+  border-radius: 9px;
+  color: var(--text);
   background: var(--surface);
-}
-
-.marker-access button {
-  padding: 0 10px;
 }
 
 @media (max-width: 960px) {

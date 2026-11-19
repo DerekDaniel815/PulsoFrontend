@@ -1,19 +1,26 @@
 <section class="history-page" aria-labelledby="history-title">
   <header class="page-heading"><div><p class="eyebrow">Actividad de ubicación</p>
     <h1 id="history-title">Historial de ubicaciones</h1>
-    <p class="intro">Coordenadas registradas por tus dispositivos</p></div>
-    <button class="export-button" type="button" [disabled]="!points().length" (click)="exportData()">Exportar CSV</button>
+    <p class="intro">Ubicaciones propias y de contactos que comparten su ubicación contigo</p></div>
+    <button class="export-button" type="button" [disabled]="loading() || !!error() || !selectedSource() || !points().length" (click)="exportData()">Exportar CSV</button>
   </header>
   @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="refresh()">Reintentar</button></p> }
+  @if (sourceError()) {
+    <p role="alert">{{ sourceError() }} <button type="button" (click)="refreshSources()">Reintentar</button></p>
+  }
+  @if (historySourcesUnavailable()) {
+    <p role="status">El servidor aún no permite listar GPS compartidos sin una ubicación visible reciente.</p>
+  }
   @if (loading()) { <p role="status">Cargando historial…</p> }
-  @if (assignments().length) {
-    <label>Dispositivo
+  @if (sources().length) {
+    <label>Persona y dispositivo
       <select [value]="selectedId()" (change)="selectAssignment($event)">
-        @for (assignment of assignments(); track assignment.idUsuarioDispositivo) {
-          <option [value]="assignment.idUsuarioDispositivo">{{ assignment.alias || assignment.dispositivo?.codigoDispositivo || assignment.idUsuarioDispositivo }}</option>
+        @for (source of sources(); track source.id) {
+          <option [value]="source.id">{{ source.label }}</option>
         }
       </select>
     </label>
+    <p class="history-permission-note">El historial compartido depende de los permisos del servidor para el periodo consultado, incluso si el GPS dejó de reportar.</p>
     <div class="period-filters" role="group" aria-label="Seleccionar periodo del historial">
       <button type="button" [attr.aria-pressed]="period() === 'today'" (click)="selectPeriod('today')">Hoy</button>
       <button type="button" [attr.aria-pressed]="period() === 'yesterday'" (click)="selectPeriod('yesterday')">Ayer</button>
@@ -22,15 +29,15 @@
       <label class="date-filter">Fecha <input type="date" [value]="date()" (change)="selectDate($event)" /></label>
     </div>
     <div class="history-layout"><section class="timeline-panel" aria-labelledby="timeline-title">
-      <h2 id="timeline-title">{{ points().length }} ubicaciones</h2>
-      <ol>
+      <h2 id="timeline-title">{{ selectedSource()?.label }} · {{ points().length }} ubicaciones</h2>
+      <ol [class.is-empty]="!points().length && !loading() && !error()">
         @for (point of points(); track point.idUbicacion) {
           <li><time [attr.datetime]="point.fechaHoraDispositivo">{{ point.fechaHoraDispositivo | date: 'shortTime' }}</time>
             <span class="timeline-dot" aria-hidden="true"></span>
             <div><h3>{{ point.latitud }}, {{ point.longitud }}</h3>
               <p>Precisión: {{ point.precisionGps ?? 'No disponible' }} m</p></div>
           </li>
-        } @empty { @if (!loading()) { <li>No hay ubicaciones registradas en este periodo.</li> } }
+        } @empty { @if (!loading() && !error()) { <li class="empty-message">No hay ubicaciones registradas en este periodo.</li> } }
       </ol>
     </section>
     <div class="route-column">
@@ -50,5 +57,5 @@
         <article><strong>{{ points().length }}</strong><p>Ubicaciones registradas</p></article>
       </div>
     </div></div>
-  } @else if (!loading()) { <p>No tienes dispositivos vinculados.</p> }
+  } @else if (!loading()) { <p>No hay dispositivos propios ni ubicaciones compartidas disponibles.</p> }
 </section>
