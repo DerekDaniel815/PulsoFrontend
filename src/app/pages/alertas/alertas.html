@@ -3,21 +3,26 @@
     <div>
       <p class="eyebrow">Centro de notificaciones</p>
       <h1 id="alerts-title">Centro de alertas</h1>
-      <p class="intro">{{ unreadCount() }} sin leer · {{ counts().critical }} críticas</p>
+      <p class="intro">{{ globalUnreadCount() }} sin leer en total</p>
     </div>
-    <button class="show-all" type="button" [disabled]="busy() || !unreadCount()" (click)="markAllRead()">Marcar todas como leídas</button>
+    <button class="show-all" type="button" [disabled]="busy() || loading() || !globalUnreadCount()" (click)="markAllRead()">Marcar todas como leídas</button>
   </header>
-  @if (error()) { <p role="alert">{{ error() }} <button type="button" (click)="refresh()">Reintentar</button></p> }
+  @if (error()) {
+    <p role="alert">{{ error() }}
+      @if (loadError()) { <button type="button" (click)="retryLoad()">Reintentar</button> }
+    </p>
+  }
   @if (loading()) { <p role="status">Cargando notificaciones…</p> }
   <div class="filter-grid" role="group" aria-label="Filtrar notificaciones">
-    <button class="filter-card" type="button" [class.is-active]="selectedFilter() === 'all'" [attr.aria-pressed]="selectedFilter() === 'all'" (click)="selectedFilter.set('all')">Todas ({{ alerts().length }})</button>
-    <button class="filter-card unread" type="button" [class.is-active]="selectedFilter() === 'unread'" [attr.aria-pressed]="selectedFilter() === 'unread'" (click)="selectedFilter.set('unread')">Sin leer ({{ unreadCount() }})</button>
-    <button class="filter-card critical" type="button" [class.is-active]="selectedFilter() === 'critical'" [attr.aria-pressed]="selectedFilter() === 'critical'" (click)="selectedFilter.set('critical')">Críticas ({{ counts().critical }})</button>
-    <button class="filter-card warning" type="button" [class.is-active]="selectedFilter() === 'warning'" [attr.aria-pressed]="selectedFilter() === 'warning'" (click)="selectedFilter.set('warning')">Advertencias ({{ counts().warning }})</button>
-    <button class="filter-card info" type="button" [class.is-active]="selectedFilter() === 'info'" [attr.aria-pressed]="selectedFilter() === 'info'" (click)="selectedFilter.set('info')">Información ({{ counts().info }})</button>
+    <button class="filter-card" type="button" [class.is-active]="selectedFilter() === 'all'" [attr.aria-pressed]="selectedFilter() === 'all'" (click)="selectFilter('all')">Todas ({{ alerts().length }} en esta página)</button>
+    <button class="filter-card unread" type="button" [class.is-active]="selectedFilter() === 'unread'" [attr.aria-pressed]="selectedFilter() === 'unread'" (click)="selectFilter('unread')">Sin leer ({{ globalUnreadCount() }} en total)</button>
+    <button class="filter-card critical" type="button" [class.is-active]="selectedFilter() === 'critical'" [attr.aria-pressed]="selectedFilter() === 'critical'" (click)="selectFilter('critical')">Críticas ({{ counts().critical }} en esta página)</button>
+    <button class="filter-card warning" type="button" [class.is-active]="selectedFilter() === 'warning'" [attr.aria-pressed]="selectedFilter() === 'warning'" (click)="selectFilter('warning')">Advertencias ({{ counts().warning }} en esta página)</button>
+    <button class="filter-card info" type="button" [class.is-active]="selectedFilter() === 'info'" [attr.aria-pressed]="selectedFilter() === 'info'" (click)="selectFilter('info')">Información ({{ counts().info }} en esta página)</button>
   </div>
+  <p class="filter-scope">Los filtros de gravedad se aplican solo a las notificaciones de esta página. «Sin leer» consulta todas las páginas.</p>
   <section class="alerts-panel" aria-labelledby="filtered-alerts-title">
-    <h2 id="filtered-alerts-title">{{ filtered().length }} notificaciones</h2>
+    <h2 id="filtered-alerts-title">{{ filtered().length }} notificaciones en esta página</h2>
     <ul class="alert-list">
       @for (item of filtered(); track item.idNotificacionUsuario) {
         <li class="alert-item" [class.is-unread]="!item.leida" [class.is-critical]="severity(item) === 'critical'" [class.is-warning]="severity(item) === 'warning'">
@@ -37,7 +42,17 @@
             }
           </div>
         </li>
-      } @empty { @if (!loading()) { <li class="empty-state">No hay notificaciones en esta categoría.</li> } }
+      } @empty { @if (!loading() && !error()) { <li class="empty-state">No hay notificaciones para este filtro en la página actual.</li> } }
     </ul>
   </section>
+  <nav class="alerts-pagination" aria-label="Páginas de notificaciones">
+    <p #pageSummary tabindex="-1" role="status" class="page-summary">
+      Página {{ pageNumber() }}
+      @if (alerts().length) { · Mostrando {{ resultStart() }}–{{ resultEnd() }} }
+    </p>
+    <div class="page-actions">
+      <button type="button" [disabled]="loading() || busy() || pageIndex() === 0" (click)="goToPage(-1)">Anterior</button>
+      <button type="button" [disabled]="loading() || busy() || !hasNextPage()" (click)="goToPage(1)">Siguiente</button>
+    </div>
+  </nav>
 </section>

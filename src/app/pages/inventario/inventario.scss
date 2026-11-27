@@ -90,9 +90,14 @@ dt { color: var(--text-muted); font-size: .8rem; }
 dd { margin: 0; overflow-wrap: anywhere; }
 .credential-receipt code { font-size: 1rem; user-select: all; }
 
-.inventory-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(280px, .8fr); align-items: start; gap: 16px; }
+.inventory-layout { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr); align-items: start; gap: 16px; }
+.inventory-tools { display: grid; align-content: start; gap: 16px; min-width: 0; }
 .inventory-list h2 { margin-bottom: 16px; }
 .table-scroll { max-width: 100%; overflow-x: auto; }
+.table-scroll:focus-visible, .inventory-tools:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
 .sr-only {
   position: absolute;
   width: 1px;
@@ -102,11 +107,19 @@ dd { margin: 0; overflow-wrap: anywhere; }
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
 }
-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .875rem; }
-th, td { padding: 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-thead th { color: var(--text-muted); font-size: .75rem; }
+table { width: 100%; min-width: 760px; table-layout: fixed; border-collapse: collapse; text-align: center; font-size: .875rem; }
+th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+thead th { width: 25%; color: var(--text-muted); font-size: .75rem; }
+tbody tr { height: 54px; }
 tbody th { font-weight: 600; }
-tbody th button { min-height: 30px; padding: 3px; border: 0; background: transparent; color: var(--primary); text-align: left; }
+tbody th button { min-height: 30px; padding: 3px; border: 0; background: transparent; color: var(--primary); text-align: center; }
+.device-connection time, .device-connection span { white-space: nowrap; }
+.device-connection time { font-variant-numeric: tabular-nums; }
+.inventory-pagination { display: grid; justify-items: center; gap: 12px; margin-top: 16px; }
+.page-summary { margin: 0; color: var(--text-muted); font-size: .875rem; font-variant-numeric: tabular-nums; text-align: center; }
+.pagination-actions { display: flex; justify-content: center; gap: 8px; }
+.pagination-actions button { color: var(--primary); background: var(--primary-soft); }
+.pagination-actions button[aria-disabled="true"] { opacity: .6; cursor: not-allowed; }
 .device-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .edit-device, .token-action { display: grid; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
 .edit-device h3, .edit-device p, .token-action h3, .token-action p { margin: 0; }
@@ -115,10 +128,71 @@ tbody th button { min-height: 30px; padding: 3px; border: 0; background: transpa
 
 @media (max-width: 980px) {
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .inventory-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 600px) {
   .page-heading { align-items: stretch; flex-direction: column; }
   .form-grid, .device-facts { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (min-width: 1180px) and (min-height: 700px) {
+  :host {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .inventory-page {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    gap: 10px;
+  }
+
+  .page-heading .intro { margin-bottom: 0; }
+  .inventory-layout {
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+    align-items: stretch;
+    min-height: 0;
+  }
+
+  .inventory-list {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .inventory-list h2 { flex: 0 0 auto; margin-bottom: 8px; }
+  .table-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  table { min-width: 680px; font-size: .8rem; }
+  th, td { padding: 5px 7px; }
+  tbody tr { height: 36px; }
+  .inventory-pagination {
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .inventory-tools {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .inventory-tools .create-device,
+  .inventory-tools .credential-receipt,
+  .inventory-tools .device-details { padding: 12px; }
+  .inventory-tools .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
 }

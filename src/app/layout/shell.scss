@@ -7,7 +7,9 @@
   position: relative;
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   background: var(--bg);
 }
 
@@ -48,7 +50,9 @@
 .sidebar {
   display: flex;
   flex-direction: column;
+  min-height: 0;
   padding: 20px 12px;
+  overflow-y: auto;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--border);
 }
@@ -162,12 +166,15 @@
 .main {
   min-width: 0;
   min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .topbar {
   min-height: var(--header-height);
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -200,6 +207,8 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-3);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .content > *:not(router-outlet) {
@@ -207,6 +216,11 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.shell:not(.is-dashboard) .content > *:not(router-outlet) {
+  flex: 0 0 auto;
+  min-height: 100%;
 }
 
 .shell.is-map-expanded {
@@ -286,10 +300,6 @@
   padding: 0;
 }
 
-.shell.is-map-expanded .main {
-  min-height: 100dvh;
-}
-
 .logout-icon {
   display: none;
 }
@@ -297,6 +307,7 @@
 @media (max-width: 960px) {
   .shell {
     grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
   }
 
   .shell .sidebar,
@@ -353,6 +364,11 @@
     display: flex;
   }
 
+  .shell.is-mobile-nav-open .sidebar {
+    max-height: 60dvh;
+    overflow-y: auto;
+  }
+
   .shell.is-overlay-nav-collapsed .user > div {
     display: block;
   }
@@ -390,10 +406,6 @@
   .shell.is-map-expanded .main {
     min-height: 0;
   }
-
-  .shell.is-map-expanded .content {
-    min-height: 65dvh;
-  }
 }
 
 @media (max-width: 600px) {
@@ -415,5 +427,39 @@
 
   .content {
     padding: 16px;
+  }
+}
+
+// El Dashboard de escritorio reserva el desplazamiento para sus paneles
+// secundarios; las demás rutas desplazan su contenido dentro de <main>.
+@media (min-width: 961px) and (min-height: 640px) {
+  .shell.is-dashboard .content {
+    overflow: hidden;
+  }
+}
+
+// Alertas e Historial distribuyen su contenido en la altura disponible.
+// Si algún texto es excepcionalmente largo, se desplaza solo el panel afectado.
+@media (min-width: 961px) and (min-height: 700px) {
+  .shell.is-compact-page .content {
+    overflow: hidden;
+  }
+
+  .shell.is-compact-page .content > *:not(router-outlet) {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+// El inventario necesita algo más de ancho para mantener legible la tabla
+// junto al formulario; en pantallas más estrechas conserva el scroll de <main>.
+@media (min-width: 1180px) and (min-height: 700px) {
+  .shell.is-inventory .content {
+    overflow: hidden;
+  }
+
+  .shell.is-inventory .content > *:not(router-outlet) {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }

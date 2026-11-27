@@ -4,6 +4,30 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-dim) var(--surface-2);
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--surface-2);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid var(--surface-2);
+  border-radius: var(--radius-pill);
+  background: var(--text-dim);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
 html,
 body {
   margin: 0;

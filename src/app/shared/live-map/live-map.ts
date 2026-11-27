@@ -67,6 +67,8 @@ export class LiveMap {
   readonly overlayLayout = input(false);
   readonly selectedUserId = input<number | null>(null);
   private mapInstance: google.maps.Map | null = null;
+  private mapOverlay: google.maps.OverlayView | null = null;
+  private overlayReady = false;
   private centeredEmergencyId: string | null = null;
   private fittedUserId: number | null = null;
   private fittedWithOwn = false;
@@ -100,6 +102,7 @@ export class LiveMap {
     this.destroyRef.onDestroy(() => {
       clearInterval(clock);
       this.cancelPreviewHide();
+      this.detachMapOverlay();
     });
     effect(() => {
       if (this.selectedMarkerId() && this.focusOnOpen && this.detailsTitle()) {
@@ -156,7 +159,10 @@ export class LiveMap {
         if (contact) this.center.set({ lat: contact.location.latitud, lng: contact.location.longitud });
         else if (own) this.center.set(own);
       }
-      if (!this.canShowMap()) this.mapInstance = null;
+      if (!this.canShowMap()) {
+        this.mapInstance = null;
+        this.detachMapOverlay();
+      }
       if (this.ready()) {
         this.updateMarkers();
       }
@@ -280,8 +286,21 @@ export class LiveMap {
   }
 
   protected onMapInitialized(map: google.maps.Map): void {
+    this.detachMapOverlay();
     this.mapInstance = map;
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = () => { this.overlayReady = true; };
+    overlay.draw = () => this.positionPreview();
+    overlay.onRemove = () => { this.overlayReady = false; };
+    this.mapOverlay = overlay;
+    overlay.setMap(map);
     this.focusSelected();
+  }
+
+  private detachMapOverlay(): void {
+    this.mapOverlay?.setMap(null);
+    this.mapOverlay = null;
+    this.overlayReady = false;
   }
 
   protected showMarkerPreview(marker: ReadyMarker, event?: google.maps.MapMouseEvent): void {
@@ -291,8 +310,8 @@ export class LiveMap {
     this.expandedMarkerId.set(null);
     this.focusReturn = null;
     this.focusOnOpen = false;
-    this.positionPreview(event);
     this.hoveredMarkerId.set(marker.id);
+    this.positionPreview(event);
   }
 
   protected schedulePreviewHide(marker: ReadyMarker): void {
@@ -317,13 +336,13 @@ export class LiveMap {
 
   protected selectMarker(marker: ReadyMarker, event?: google.maps.MapMouseEvent): void {
     this.cancelPreviewHide();
-    this.positionPreview(event);
     this.hoveredMarkerId.set(null);
     this.focusOnOpen = event?.domEvent instanceof KeyboardEvent;
     this.focusReturn = event?.domEvent.target instanceof HTMLElement && event.domEvent.target.tabIndex >= 0
       ? event.domEvent.target : null;
     this.selectedMarkerId.set(marker.id);
     this.expandedMarkerId.set(null);
+    this.positionPreview(event);
   }
 
   protected toggleMarkerDetails(markerId: string): void {
@@ -348,23 +367,41 @@ export class LiveMap {
   }
 
   private positionPreview(event?: google.maps.MapMouseEvent): void {
-    if (!(event?.domEvent instanceof MouseEvent)) {
-      this.previewPosition.set(null);
-      return;
-    }
     const bounds = this.host.nativeElement.getBoundingClientRect();
     if (bounds.width < 220 || bounds.height < 240) {
       this.previewPosition.set(null);
       return;
     }
-    const x = event.domEvent.clientX - bounds.left;
-    const y = event.domEvent.clientY - bounds.top;
+    const marker = this.selectedMarker();
+    let x: number;
+    let y: number;
+    if (marker && this.overlayReady && this.mapOverlay && this.mapInstance) {
+      const pixel = this.mapOverlay.getProjection().fromLatLngToContainerPixel(marker.position);
+      if (!pixel) return;
+      const mapBounds = this.mapInstance.getDiv().getBoundingClientRect();
+      if (pixel.x < 0 || pixel.y < 0 || pixel.x > mapBounds.width || pixel.y > mapBounds.height) {
+        if (this.selectedMarkerId()) this.closeDetails();
+        else this.hoveredMarkerId.set(null);
+        this.previewPosition.set(null);
+        return;
+      }
+      x = pixel.x + mapBounds.left - bounds.left;
+      y = pixel.y + mapBounds.top - bounds.top;
+    } else if (event?.domEvent instanceof MouseEvent) {
+      x = event.domEvent.clientX - bounds.left;
+      y = event.domEvent.clientY - bounds.top;
+    } else {
+      this.previewPosition.set(null);
+      return;
+    }
     const cardWidth = Math.min(310, bounds.width - 24);
     const left = x + cardWidth + 20 < bounds.width ? x + 16 : x - cardWidth - 16;
-    this.previewPosition.set({
+    const next = {
       left: Math.max(12, Math.min(left, bounds.width - cardWidth - 12)),
       top: Math.max(12, Math.min(y - 60, bounds.height - 220)),
-    });
+    };
+    const previous = this.previewPosition();
+    if (previous?.left !== next.left || previous.top !== next.top) this.previewPosition.set(next);
   }
 
   protected relativeTime(value?: string): string {
@@ -522,5 +559,6 @@ export class LiveMap {
         options: markerOptions(point),
       })),
     );
+    if (this.selectedMarker() && this.overlayReady) this.positionPreview();
   }
 }

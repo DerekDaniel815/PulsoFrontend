@@ -1,0 +1,86 @@
+:host {
+  display: block;
+}
+
+.lookup {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+p {
+  margin: 8px 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lookup-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+input {
+  min-width: 0;
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+button {
+  padding: 8px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  background: var(--primary);
+  color: var(--sidebar-bg);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+input:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.lookup-error {
+  color: var(--emergency);
+}
+
+.lookup-result {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+}
+
+.lookup-result strong {
+  font-size: 0.85rem;
+}
+
+.lookup-result a {
+  color: var(--primary);
+  font-size: 0.85rem;
+}

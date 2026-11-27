@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/auth/auth.guard';
 import { adminGuard } from './core/auth/admin.guard';
+import { dashboardGuard, userGuard } from './core/auth/user.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
@@ -15,31 +15,32 @@ export const routes: Routes = [
       },
       {
         path: 'dashboard',
+        canActivate: [dashboardGuard],
         loadComponent: () => import('./pages/dashboard/dashboard').then((m) => m.Dashboard),
       },
       {
         path: 'mapa',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/mapa/mapa').then((m) => m.Mapa),
       },
       {
         path: 'contactos',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/contactos/contactos').then((m) => m.Contactos),
       },
       {
         path: 'grupos',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/grupos/grupos').then((m) => m.Grupos),
       },
       {
         path: 'alertas',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/alertas/alertas').then((m) => m.Alertas),
       },
       {
         path: 'historial',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/historial/historial').then((m) => m.Historial),
       },
       {
@@ -48,13 +49,8 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/inventario/inventario').then((m) => m.Inventario),
       },
       {
-        path: 'zonas-seguras',
-        canActivate: [authGuard],
-        loadComponent: () => import('./pages/zonas-seguras/zonas-seguras').then((m) => m.ZonasSeguras),
-      },
-      {
         path: 'configuracion',
-        canActivate: [authGuard],
+        canActivate: [userGuard],
         loadComponent: () => import('./pages/configuracion/configuracion').then((m) => m.Configuracion),
       },
     ],

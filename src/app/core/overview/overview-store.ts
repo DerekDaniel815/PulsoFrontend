@@ -33,7 +33,7 @@ export class OverviewStore {
 
   constructor() {
     effect(() => {
-      const active = this.session.isAuthenticated();
+      const active = this.session.isAuthenticated() && this.session.user()?.rol === 'USUARIO';
       this.locations.notificationVersion();
       if (!active) {
         this.generation++;
@@ -48,7 +48,7 @@ export class OverviewStore {
   }
 
   async refresh(): Promise<void> {
-    if (!this.session.isAuthenticated()) return;
+    if (!this.session.isAuthenticated() || this.session.user()?.rol !== 'USUARIO') return;
     const generation = ++this.generation;
     const [contacts, emergencies, notifications, unread] = await Promise.allSettled([
       firstValueFrom(this.contactsApi.list()),
@@ -56,7 +56,8 @@ export class OverviewStore {
       firstValueFrom(this.notificationsApi.list()),
       firstValueFrom(this.http.get<{ count: number }>(`${PULSO_API_URL}/notifications/unread-count`)),
     ]);
-    if (generation !== this.generation || !this.session.isAuthenticated()) return;
+    if (generation !== this.generation || !this.session.isAuthenticated() ||
+        this.session.user()?.rol !== 'USUARIO') return;
     if (contacts.status === 'fulfilled') this.contacts.set(contacts.value);
     // Nunca conservar emergencias de una consulta anterior si no se pueden
     // confirmar de nuevo los permisos del usuario actual.

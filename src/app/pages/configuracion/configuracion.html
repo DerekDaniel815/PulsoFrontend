@@ -23,23 +23,71 @@
     }
   </section>
   <section class="settings-card" aria-labelledby="devices-title">
-    <h2 id="devices-title">GPS y visibilidad</h2>
+    <h2 #devicesTitle id="devices-title" tabindex="-1">GPS y visibilidad</h2>
+    <form class="link-device" [formGroup]="linkForm" (ngSubmit)="linkDevice()" aria-labelledby="link-device-title">
+      <h3 id="link-device-title">Vincular un GPS</h3>
+      <p>Introduce el código impreso en el equipo (PUL-…). No uses el device token del firmware.</p>
+      <div class="link-fields">
+        <label>Código del dispositivo
+          <input type="text" formControlName="codigoDispositivo" required autocomplete="off" />
+        </label>
+        <label>Alias (opcional)
+          <input type="text" formControlName="alias" maxlength="100" autocomplete="off" />
+        </label>
+      </div>
+      <button type="submit" [disabled]="linking() || updatingDevice() !== null || linkForm.invalid || !linkForm.controls.codigoDispositivo.value.trim()">
+        {{ linking() ? 'Vinculando…' : 'Vincular GPS' }}
+      </button>
+    </form>
     @if (devicesLoading()) { <p role="status">Cargando dispositivos…</p> }
-    @if (deviceError()) { <p role="alert">{{ deviceError() }} <button type="button" (click)="loadDevices()">Reintentar</button></p> }
-    @for (device of devices(); track device.idUsuarioDispositivo) {
+    @if (deviceError()) { <p role="alert">{{ deviceError() }} @if (deviceListError()) { <button type="button" (click)="loadDevices()">Reintentar</button> }</p> }
+    @if (deviceNotice()) { <p class="action-feedback" role="status">{{ deviceNotice() }}</p> }
+    @for (device of activeDevices(); track device.idUsuarioDispositivo) {
       <div class="setting-row device-row">
         <div><strong>{{ device.alias || 'Dispositivo ' + device.idUsuarioDispositivo }}</strong>
-          <span>Registro de ubicaciones {{ device.ubicacionActiva ? 'activo' : 'pausado' }}</span></div>
-        <button class="switch" type="button" role="switch" [class.is-active]="device.ubicacionActiva" [attr.aria-checked]="device.ubicacionActiva" [attr.aria-label]="(device.ubicacionActiva ? 'Pausar' : 'Activar') + ' ubicación del dispositivo ' + (device.alias || device.idUsuarioDispositivo)" [disabled]="updatingDevice() !== null" (click)="updateDevice(device, { ubicacionActiva: !device.ubicacionActiva })"><span></span></button>
+          <span>{{ device.dispositivo?.codigoDispositivo || 'GPS vinculado' }} · Registro de ubicaciones {{ device.ubicacionActiva ? 'activo' : 'pausado' }}</span></div>
+        <div class="device-actions">
+          <button #aliasEditButton class="secondary-button" type="button" [disabled]="updatingDevice() !== null || linking()"
+            [attr.aria-label]="'Editar alias de ' + (device.alias || device.dispositivo?.codigoDispositivo || 'dispositivo ' + device.idUsuarioDispositivo)"
+            (click)="startAliasEdit(device)">Editar alias</button>
+          <button class="unlink-button" type="button" [disabled]="updatingDevice() !== null || linking()"
+            [attr.aria-label]="'Desvincular ' + (device.alias || device.dispositivo?.codigoDispositivo || 'dispositivo ' + device.idUsuarioDispositivo)"
+            (click)="unlinkDevice(device)">Desvincular</button>
+          <button class="switch" type="button" role="switch" [class.is-active]="device.ubicacionActiva" [attr.aria-checked]="device.ubicacionActiva" [attr.aria-label]="(device.ubicacionActiva ? 'Pausar' : 'Activar') + ' ubicación del dispositivo ' + (device.alias || device.idUsuarioDispositivo)" [disabled]="updatingDevice() !== null || linking()" (click)="updateDevice(device, { ubicacionActiva: !device.ubicacionActiva })"><span></span></button>
+        </div>
       </div>
+      @if (editingAliasId() === device.idUsuarioDispositivo) {
+        <form class="alias-form" (submit)="$event.preventDefault(); saveAlias(device)">
+          <label [attr.for]="'alias-' + device.idUsuarioDispositivo">Alias del dispositivo
+            <input #aliasInput [id]="'alias-' + device.idUsuarioDispositivo" type="text"
+              maxlength="100" autocomplete="off" [formControl]="aliasControl" />
+          </label>
+          <button type="submit" [disabled]="aliasControl.invalid || updatingDevice() !== null">Guardar alias</button>
+          <button type="button" (click)="closeAliasEdit(device.idUsuarioDispositivo)">Cancelar</button>
+        </form>
+      }
       <label class="visibility-select">Visibilidad de {{ device.alias || 'dispositivo ' + device.idUsuarioDispositivo }}
-        <select [value]="device.visibilidadPreferida" [disabled]="updatingDevice() !== null" (change)="selectVisibility(device, $event)">
+        <select [value]="device.visibilidadPreferida" [disabled]="updatingDevice() !== null || linking()" (change)="selectVisibility(device, $event)">
           <option value="SOLO_YO">Solo yo</option>
           <option value="GRUPO">Contactos y grupos autorizados</option>
           <option value="PUBLICO">Público</option>
         </select>
       </label>
-    } @empty { @if (!deviceError() && !devicesLoading()) { <p class="empty-state">No hay dispositivos vinculados para configurar.</p> } }
+    } @empty { @if (!deviceError() && !devicesLoading()) { <p class="empty-state">No hay dispositivos activos. Vincula un GPS para configurar su ubicación.</p> } }
+    @if (pastDevices().length) {
+      <section class="past-devices" aria-labelledby="past-devices-title">
+        <h3 id="past-devices-title">Dispositivos desvinculados</h3>
+        <p>Su historial se conserva, pero ya no puedes gestionar su ubicación desde esta cuenta.</p>
+        <ul>
+          @for (device of pastDevices(); track device.idUsuarioDispositivo) {
+            <li>{{ device.alias || device.dispositivo?.codigoDispositivo || 'Dispositivo ' + device.idUsuarioDispositivo }}
+              @if (device.fechaDesvinculacion) { · {{ device.fechaDesvinculacion | date: 'mediumDate' }} }
+            </li>
+          }
+        </ul>
+        <a routerLink="/historial">Ver historial</a>
+      </section>
+    }
   </section>
   <section class="settings-card" aria-labelledby="preferences-title">
     <h2 id="preferences-title">Preferencias de ubicación</h2>

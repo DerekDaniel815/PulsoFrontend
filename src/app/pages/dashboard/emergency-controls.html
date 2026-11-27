@@ -1,0 +1,60 @@
+@if (isUser()) {
+<section class="emergency-card" aria-labelledby="emergency-controls-title">
+  <h2 #heading id="emergency-controls-title" tabindex="-1">Gestionar emergencias</h2>
+  <p>Una emergencia puede mostrar públicamente la última ubicación disponible del GPS. Si necesitas ayuda inmediata, llama a los servicios de emergencia de tu zona.</p>
+
+  @if (error()) {
+    <p role="alert" class="emergency-error">{{ error() }}
+      @if (devicesError()) { <button type="button" (click)="loadDevices()">Reintentar</button> }
+    </p>
+  }
+  @if (notice()) { <p role="status" class="emergency-notice">{{ notice() }}</p> }
+  @if (loading()) { <p role="status">Cargando tus GPS…</p> }
+
+  @if (ownEmergencies().length) {
+    <ul class="own-emergencies" aria-label="Tus emergencias activas">
+      @for (emergency of ownEmergencies(); track emergency.idEmergencia) {
+        <li>
+          <div>
+            <strong>{{ deviceLabel(emergency.idUsuarioDispositivo) }}</strong>
+            <span>Activa desde {{ emergency.fechaInicio | date: 'short' }}</span>
+          </div>
+          <button type="button" [disabled]="busy() || !isSafeEmergencyId(emergency.idEmergencia)"
+            [attr.aria-label]="'Finalizar emergencia de ' + deviceLabel(emergency.idUsuarioDispositivo)"
+            (click)="finish(emergency)">Finalizar emergencia</button>
+          @if (!isSafeEmergencyId(emergency.idEmergencia)) {
+            <span class="id-warning">No se puede finalizar: identificador no válido.</span>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!loading() && activeDevices().length) {
+    <form class="activate-form" [formGroup]="form" (ngSubmit)="activate()">
+      <label>GPS propio
+        <select formControlName="assignmentId" required>
+          <option value="">Selecciona un GPS</option>
+          @for (device of activeDevices(); track device.idUsuarioDispositivo) {
+            <option [value]="device.idUsuarioDispositivo" [disabled]="hasActiveEmergency(device.idUsuarioDispositivo)">
+              {{ deviceLabel(device.idUsuarioDispositivo) }}
+              @if (hasActiveEmergency(device.idUsuarioDispositivo)) { · Emergencia activa }
+            </option>
+          }
+        </select>
+      </label>
+      <label>
+        <span class="description-label">
+          Descripción (opcional)
+          <span id="emergency-description-count" class="description-count">{{ form.controls.description.value.length }}/{{ descriptionMaxLength }}</span>
+        </span>
+        <textarea formControlName="description" [attr.maxlength]="descriptionMaxLength"
+          aria-describedby="emergency-description-count"></textarea>
+      </label>
+      <button type="submit" [disabled]="busy() || form.invalid || selectedAlreadyActive()">Activar emergencia</button>
+    </form>
+  } @else if (!loading() && !error()) {
+    <p>No tienes GPS activos. <a routerLink="/configuracion">Vincular un GPS</a></p>
+  }
+</section>
+}

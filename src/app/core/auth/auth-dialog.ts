@@ -12,6 +12,7 @@ import {
 import { Router } from '@angular/router';
 import { AuthDialogMode, AuthDialogService } from './auth-dialog.service';
 import { AuthSession } from './auth-session';
+import { SessionStore } from './session-store';
 
 interface LoginFormModel {
   correo: string;
@@ -32,6 +33,7 @@ interface RegisterFormModel extends LoginFormModel {
 })
 export class AuthDialog {
   private readonly session = inject(AuthSession);
+  private readonly store = inject(SessionStore);
   private readonly router = inject(Router);
   protected readonly dialogState = inject(AuthDialogService);
   private readonly dialog = viewChild<ElementRef<HTMLDialogElement>>('dialog');
@@ -155,7 +157,7 @@ export class AuthDialog {
     const returnUrl = this.dialogState.returnUrl();
     this.resetForms();
     this.dialogState.close();
-    await this.router.navigateByUrl(returnUrl);
+    await this.router.navigateByUrl(this.store.user()?.rol === 'ADMIN' ? '/inventario' : returnUrl);
   }
 
   private resetForms(): void {

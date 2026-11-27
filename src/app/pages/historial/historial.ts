@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
 import { SessionStore } from '../../core/auth/session-store';
@@ -36,6 +36,7 @@ interface HistoryLocation {
 }
 
 type Period = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
+const HISTORY_PAGE_SIZE = 4;
 
 @Component({
   selector: 'app-historial',
@@ -44,6 +45,7 @@ type Period = 'today' | 'yesterday' | 'week' | 'month' | 'custom';
   styleUrl: './historial.scss',
 })
 export class Historial {
+  private readonly timelineList = viewChild<ElementRef<HTMLOListElement>>('timelineList');
   private readonly http = inject(HttpClient);
   private readonly session = inject(SessionStore);
   private readonly locations = inject(LocationsStore);
@@ -83,6 +85,10 @@ export class Historial {
   protected readonly period = signal<Period>('today');
   protected readonly date = signal('');
   protected readonly points = signal<HistoryLocation[]>([]);
+  protected readonly historyPage = signal(0);
+  protected readonly historyPageCount = computed(() => Math.max(1, Math.ceil(this.points().length / HISTORY_PAGE_SIZE)));
+  protected readonly visiblePoints = computed(() =>
+    this.points().slice(this.historyPage() * HISTORY_PAGE_SIZE, (this.historyPage() + 1) * HISTORY_PAGE_SIZE));
   protected readonly route = computed(() => {
     const locations = this.points();
     const latitudes = locations.map((point) => point.latitud);
@@ -138,6 +144,7 @@ export class Historial {
           (id === null && sources.length > 0)) {
         this.requestGeneration++;
         this.points.set([]);
+        this.historyPage.set(0);
         this.error.set(null);
         this.selectedId.set(this.session.isAuthenticated() ? sources[0]?.id ?? null : null);
         if (this.selectedId() !== null) void this.refresh();
@@ -187,6 +194,7 @@ export class Historial {
     if (!this.sources().some((source) => source.id === id)) return;
     this.requestGeneration++;
     this.points.set([]);
+    this.historyPage.set(0);
     this.error.set(null);
     this.selectedId.set(id);
     void this.refresh();
@@ -202,6 +210,14 @@ export class Historial {
     this.date.set((event.target as HTMLInputElement).value);
     this.period.set('custom');
     void this.refresh();
+  }
+
+  protected changeHistoryPage(direction: -1 | 1): void {
+    const next = this.historyPage() + direction;
+    if (next < 0 || next >= this.historyPageCount()) return;
+    this.historyPage.set(next);
+    const list = this.timelineList()?.nativeElement;
+    if (list) list.scrollTop = 0;
   }
 
   protected async refresh(): Promise<void> {
@@ -221,6 +237,7 @@ export class Historial {
       : now;
     this.loading.set(true);
     this.points.set([]);
+    this.historyPage.set(0);
     this.error.set(null);
     try {
       const params = new HttpParams().set('from', start.toISOString()).set('to', end.toISOString());

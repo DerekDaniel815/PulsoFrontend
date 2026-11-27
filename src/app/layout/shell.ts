@@ -9,7 +9,7 @@ import { SessionStore } from '../core/auth/session-store';
 import { LocationsStore } from '../core/locations/locations-store';
 import { OverviewStore } from '../core/overview/overview-store';
 import { LayoutMode } from './layout-mode';
-import { NAV_ITEMS } from './nav';
+import { navItemsForRole } from './nav';
 
 @Component({
   selector: 'app-shell',
@@ -31,9 +31,7 @@ export class Shell {
   protected readonly layout = inject(LayoutMode);
   protected readonly mobileNavOpen = signal(false);
 
-  protected readonly navItems = computed(() =>
-    NAV_ITEMS.filter((item) => !item.adminOnly || this.session.user()?.rol === 'ADMIN'),
-  );
+  protected readonly navItems = computed(() => navItemsForRole(this.session.user()?.rol));
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -43,6 +41,11 @@ export class Shell {
     ),
     { initialValue: this.router.url },
   );
+
+  protected readonly isDashboard = computed(() => this.url().split('?')[0] === '/dashboard');
+  protected readonly isCompactPage = computed(() =>
+    ['/alertas', '/historial'].includes(this.url().split(/[?#]/)[0]));
+  protected readonly isInventory = computed(() => this.url().split(/[?#]/)[0] === '/inventario');
 
   protected readonly pageTitle = computed(() => {
     const current = this.url();
@@ -76,6 +79,11 @@ export class Shell {
       if (currentUrl.startsWith('/inventario') && this.session.isAuthenticated() &&
           this.session.user()?.rol !== 'ADMIN') {
         void this.router.navigate(['/dashboard']);
+        return;
+      }
+      if (this.session.isAuthenticated() && this.session.user()?.rol === 'ADMIN' &&
+          !currentUrl.startsWith('/inventario')) {
+        void this.router.navigate(['/inventario']);
         return;
       }
       if (this.session.isAuthenticated() || this.loggingOut || currentUrl.startsWith('/dashboard')) {
