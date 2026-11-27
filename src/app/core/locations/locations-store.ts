@@ -50,7 +50,8 @@ export class LocationsStore {
 
   constructor() {
     effect(() => {
-      const token = this.session.isAuthenticated() ? this.session.token() : null;
+      const token = this.session.isAuthenticated() && this.session.user()?.rol === 'USUARIO'
+        ? this.session.token() : null;
       this.generation++;
       this.realtimeVersion++;
       this.fetchVersion++;
@@ -116,7 +117,7 @@ export class LocationsStore {
   }
 
   async refresh(): Promise<void> {
-    if (!this.session.isAuthenticated()) return;
+    if (!this.session.isAuthenticated() || this.session.user()?.rol !== 'USUARIO') return;
     const generation = this.generation;
     const realtimeVersion = this.realtimeVersion;
     const fetchVersion = ++this.fetchVersion;

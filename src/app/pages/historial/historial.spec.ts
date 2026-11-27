@@ -232,6 +232,36 @@ describe('Historial', () => {
     );
   });
 
+  it('paginates only the timeline and keeps the full route and summary', () => {
+    const points = Array.from({ length: 9 }, (_, i) => ({
+      ...history[0], idUbicacion: `point-${i}`, latitud: -12 + i,
+    }));
+    fixture.componentInstance['points'].set(points);
+    fixture.detectChanges();
+
+    const rows = () => fixture.nativeElement.querySelectorAll('.timeline-panel ol li') as NodeListOf<HTMLLIElement>;
+    const buttons = () => fixture.nativeElement.querySelectorAll('.timeline-pagination button') as NodeListOf<HTMLButtonElement>;
+    expect(rows()).toHaveLength(4);
+    expect(rows()[0].textContent).toContain('-12, -77');
+    expect(fixture.nativeElement.querySelector('.route-map figcaption').textContent).toContain('9 puntos');
+    expect(fixture.nativeElement.querySelector('.metrics').textContent).toContain('9');
+    expect(buttons()[0].disabled).toBe(true);
+
+    buttons()[1].click();
+    fixture.detectChanges();
+    expect(rows()).toHaveLength(4);
+    expect(rows()[0].textContent).toContain('-8, -77');
+    expect(fixture.nativeElement.querySelector('.timeline-pagination span').textContent).toContain('Página 2 de 3');
+    buttons()[1].click();
+    fixture.detectChanges();
+    expect(rows()).toHaveLength(1);
+    expect(buttons()[1].disabled).toBe(true);
+
+    fixture.componentInstance['selectPeriod']('week');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.timeline-pagination')).toBeNull();
+  });
+
   it('fetches a new period when selected', () => {
     const buttons = fixture.nativeElement.querySelectorAll('.period-filters button');
     const previousCalls = http.get.mock.calls.length;

@@ -47,7 +47,7 @@
     </aside>
   }
 
-  <section class="stage" [class.has-panels]="isAuthenticated()">
+  <section class="stage has-panels">
     <div class="map">
       <app-live-map [overlayLayout]="mapExpanded()" />
       <div class="map-overlay"><span aria-hidden="true">●</span> Últimas ubicaciones autorizadas</div>
@@ -58,9 +58,6 @@
             <li><span class="dot danger"></span> Emergencia</li>
           </ul>
         }
-        <a class="expand-map" routerLink="/mapa" aria-label="Abrir mapa interactivo completo" title="Abrir mapa interactivo completo">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
-        </a>
         <button
         class="expand-map"
         type="button"
@@ -96,8 +93,14 @@
       </div>
     </div>
 
-    @if (isAuthenticated()) {
-      <div class="float-panels">
+    <div class="float-panels" role="region" aria-label="Paneles de resumen" tabindex="0">
+      @if (isAuthenticated()) {
+        @if (isMobile()) {
+          <app-emergency-controls />
+        }
+      }
+      <app-public-emergency-lookup />
+      @if (isAuthenticated()) {
         <article class="card list-card">
           <header class="panel-head"><h3>Contactos</h3><a routerLink="/contactos">Ver todos</a></header>
           <ul>
@@ -132,7 +135,7 @@
           </div>
           <a routerLink="/configuracion">Gestionar visibilidad</a>
         </article>
-      </div>
-    }
+      }
+    </div>
   </section>
 </div>

@@ -11,18 +11,22 @@ import { OverviewStore } from './overview-store';
 
 describe('OverviewStore emergency location', () => {
   const authenticated = signal(true);
+  const user = signal({ rol: 'USUARIO' as 'USUARIO' | 'ADMIN' });
   const notificationVersion = signal(0);
   let http: HttpTestingController;
   let overview: OverviewStore;
 
   beforeEach(() => {
     authenticated.set(true);
+    user.set({ rol: 'USUARIO' });
     notificationVersion.set(0);
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: SessionStore, useValue: { isAuthenticated: authenticated } },
+        { provide: SessionStore, useValue: {
+          isAuthenticated: authenticated, user,
+        } },
         { provide: LocationsStore, useValue: { notificationVersion } },
         { provide: ContactsApi, useValue: { list: () => of([]) } },
         { provide: NotificationsApi, useValue: { list: () => of([]) } },
@@ -30,12 +34,12 @@ describe('OverviewStore emergency location', () => {
     });
     http = TestBed.inject(HttpTestingController);
     overview = TestBed.inject(OverviewStore);
-    TestBed.tick();
   });
 
   afterEach(() => http.verify());
 
   it('retains the server last known position and its capture time after the GPS goes offline', async () => {
+    TestBed.tick();
     http.expectOne((request) => request.url.endsWith('/emergencies/active')).flush([{
       idEmergencia: 'sos-1', idUsuarioDispositivo: 7, estado: 'ACTIVA',
       fechaInicio: '2026-11-19T12:00:00Z',
@@ -58,6 +62,7 @@ describe('OverviewStore emergency location', () => {
   });
 
   it('drops an old emergency if a refreshed authorization check fails', async () => {
+    TestBed.tick();
     http.expectOne((request) => request.url.endsWith('/emergencies/active'))
       .flush([{ idEmergencia: 'sos-1', idUsuarioDispositivo: 7, estado: 'ACTIVA' }]);
     http.expectOne((request) => request.url.endsWith('/notifications/unread-count'))
@@ -70,6 +75,14 @@ describe('OverviewStore emergency location', () => {
     http.expectOne((request) => request.url.endsWith('/notifications/unread-count'))
       .flush({ count: 0 });
     await refresh;
+    expect(overview.emergencies()).toEqual([]);
+  });
+
+  it('does not request user alerts or contacts for ADMIN', async () => {
+    user.set({ rol: 'ADMIN' });
+    TestBed.tick();
+    await overview.refresh();
+    expect(http.match(() => true)).toEqual([]);
     expect(overview.emergencies()).toEqual([]);
   });
 });

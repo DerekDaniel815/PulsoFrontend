@@ -30,8 +30,8 @@
     </div>
     <div class="history-layout"><section class="timeline-panel" aria-labelledby="timeline-title">
       <h2 id="timeline-title">{{ selectedSource()?.label }} · {{ points().length }} ubicaciones</h2>
-      <ol [class.is-empty]="!points().length && !loading() && !error()">
-        @for (point of points(); track point.idUbicacion) {
+      <ol #timelineList [class.is-empty]="!points().length && !loading() && !error()">
+        @for (point of visiblePoints(); track point.idUbicacion) {
           <li><time [attr.datetime]="point.fechaHoraDispositivo">{{ point.fechaHoraDispositivo | date: 'shortTime' }}</time>
             <span class="timeline-dot" aria-hidden="true"></span>
             <div><h3>{{ point.latitud }}, {{ point.longitud }}</h3>
@@ -39,6 +39,13 @@
           </li>
         } @empty { @if (!loading() && !error()) { <li class="empty-message">No hay ubicaciones registradas en este periodo.</li> } }
       </ol>
+      @if (historyPageCount() > 1) {
+        <nav class="timeline-pagination" aria-label="Páginas del historial">
+          <button type="button" [disabled]="historyPage() === 0" (click)="changeHistoryPage(-1)" aria-label="Página anterior del historial">Anterior</button>
+          <span aria-live="polite">Página {{ historyPage() + 1 }} de {{ historyPageCount() }}</span>
+          <button type="button" [disabled]="historyPage() + 1 === historyPageCount()" (click)="changeHistoryPage(1)" aria-label="Página siguiente del historial">Siguiente</button>
+        </nav>
+      }
     </section>
     <div class="route-column">
       <figure class="route-map">

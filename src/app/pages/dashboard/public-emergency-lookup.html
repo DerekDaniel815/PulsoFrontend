@@ -1,0 +1,34 @@
+<section class="lookup" aria-labelledby="public-emergency-title">
+  <h2 id="public-emergency-title">Consultar emergencia</h2>
+  <p>Introduce el código público para consultar una emergencia activa.</p>
+  <form [formGroup]="form" (ngSubmit)="search()">
+    <label for="public-emergency-code">Código público</label>
+    <div class="lookup-form">
+      <input id="public-emergency-code" type="text" autocomplete="off" autocapitalize="characters"
+        placeholder="EME-XXXXXXXX" maxlength="12" formControlName="code"
+        [attr.aria-invalid]="code.touched && code.invalid"
+        [attr.aria-describedby]="code.touched && code.invalid ? 'public-emergency-validation' : null"
+        (input)="clearResult()" />
+      <button type="submit" [disabled]="loading()">Consultar</button>
+    </div>
+    @if (code.touched && code.invalid) {
+      <p id="public-emergency-validation" class="lookup-error">Escribe un código con formato EME- seguido de 8 letras o números hexadecimales.</p>
+    }
+  </form>
+  @if (loading()) { <p role="status">Consultando emergencia…</p> }
+  @if (error(); as message) { <p role="alert" class="lookup-error">{{ message }}</p> }
+  @if (result(); as emergency) {
+    <div class="lookup-result" role="status">
+      <strong>Emergencia activa · {{ emergency.codigoPublico }}</strong>
+      @if (coordinates(); as location) {
+        <p>{{ location.isApproximate ? 'Ubicación aproximada' : 'Última ubicación disponible' }}:
+          {{ location.latitud | number: '1.5-5' }}, {{ location.longitud | number: '1.5-5' }}</p>
+        <p>Registrada: {{ emergency.fechaUltimaUbicacion || location.fechaHoraDispositivo | date: 'short' }}</p>
+        <p>{{ location.isLive ? 'Vigente al consultar; puede cambiar.' : 'Ubicación anterior; puede no ser la posición actual.' }}</p>
+        <a [href]="mapUrl()" target="_blank" rel="noopener noreferrer">Ver ubicación en Google Maps (abre otra pestaña)</a>
+      } @else {
+        <p>Aún no hay una ubicación disponible para esta emergencia.</p>
+      }
+    </div>
+  }
+</section>

@@ -1,6 +1,6 @@
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../core/auth/session-store';
@@ -9,6 +9,7 @@ import {
 } from '../../core/devices/devices-api';
 
 type Credential = { code: string; token: string; action: 'created' | 'regenerated' };
+const COMPACT_LAYOUT = '(min-width: 1180px) and (min-height: 700px)';
 
 @Component({
   selector: 'app-inventario',
@@ -22,12 +23,23 @@ export class Inventario {
   private readonly credentialTitle = viewChild<ElementRef<HTMLElement>>('credentialTitle');
   private readonly detailTitle = viewChild<ElementRef<HTMLElement>>('detailTitle');
   private readonly createButton = viewChild<ElementRef<HTMLButtonElement>>('createButton');
+  private readonly tableViewport = viewChild<ElementRef<HTMLElement>>('tableViewport');
   private credentialReturn: HTMLElement | null = null;
   private focusDetails = false;
   private generation = 0;
   private detailVersion = 0;
 
   protected readonly devices = signal<InventoryDevice[]>([]);
+  protected readonly pageSize = signal(10);
+  protected readonly page = signal(1);
+  protected readonly pageCount = computed(() => Math.max(1, Math.ceil(this.devices().length / this.pageSize())));
+  protected readonly currentPage = computed(() => Math.min(this.page(), this.pageCount()));
+  protected readonly visibleDevices = computed(() => {
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return this.devices().slice(start, start + this.pageSize());
+  });
+  protected readonly firstItem = computed(() => (this.currentPage() - 1) * this.pageSize() + 1);
+  protected readonly lastItem = computed(() => Math.min(this.currentPage() * this.pageSize(), this.devices().length));
   protected readonly selected = signal<InventoryDevice | null>(null);
   protected readonly loading = signal(true);
   protected readonly detailLoading = signal(false);
@@ -61,6 +73,7 @@ export class Inventario {
       this.detailVersion++;
       this.credential.set(null);
       this.devices.set([]);
+      this.page.set(1);
       this.selected.set(null);
       this.busy.set(false);
       this.detailLoading.set(false);
@@ -74,6 +87,43 @@ export class Inventario {
         this.focusDetails = false;
       }
     });
+    effect((onCleanup) => {
+      const viewport = this.tableViewport()?.nativeElement;
+      if (!viewport) return;
+      const resize = () => this.updatePageSize(viewport);
+      const observer = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+          if (window.matchMedia?.(COMPACT_LAYOUT).matches) resize();
+        })
+        : null;
+      observer?.observe(viewport);
+      window.addEventListener('resize', resize);
+      untracked(resize);
+      onCleanup(() => {
+        observer?.disconnect();
+        window.removeEventListener('resize', resize);
+      });
+    });
+  }
+
+  private updatePageSize(viewport: HTMLElement): void {
+    const compact = window.matchMedia?.(COMPACT_LAYOUT).matches ?? false;
+    const headerHeight = viewport.querySelector('thead')?.getBoundingClientRect().height || 36;
+    const rowHeight = viewport.querySelector('tbody tr')?.getBoundingClientRect().height || (compact ? 42 : 54);
+    const main = viewport.closest('main');
+    const top = viewport.getBoundingClientRect().top + (main?.scrollTop ?? 0);
+    const footerHeight = viewport.parentElement?.querySelector('.inventory-pagination')?.getBoundingClientRect().height || 64;
+    // En escritorio la tabla ya tiene una altura fija; en vistas apiladas se
+    // reserva espacio para el encabezado y la paginación dentro de la ventana.
+    const available = compact
+      ? viewport.clientHeight
+      : window.innerHeight - top - footerHeight - 24;
+    if (compact && available <= headerHeight) return;
+    const size = Math.max(1, Math.floor((available - headerHeight - 1) / rowHeight));
+    if (size === this.pageSize()) return;
+    const firstIndex = (this.currentPage() - 1) * this.pageSize();
+    this.pageSize.set(size);
+    this.page.set(Math.floor(firstIndex / size) + 1);
   }
 
   protected statusLabel(status: DeviceStatus): string {
@@ -86,6 +136,11 @@ export class Inventario {
     }
   }
 
+  protected goToPage(page: number): void {
+    if (!this.isAdmin() || this.busy() || page < 1 || page > this.pageCount()) return;
+    this.page.set(page);
+  }
+
   protected async loadDevices(generation = this.generation): Promise<void> {
     if (!this.isAdmin()) return;
     this.loading.set(true);
@@ -94,6 +149,7 @@ export class Inventario {
       const devices = await firstValueFrom(this.api.list());
       if (generation !== this.generation || !this.isAdmin()) return;
       this.devices.set(devices);
+      this.page.update((page) => Math.min(page, this.pageCount()));
       const id = this.selected()?.idDispositivo;
       if (id !== undefined && !devices.some((device) => device.idDispositivo === id)) {
         this.selected.set(null);
@@ -145,6 +201,7 @@ export class Inventario {
       const created = await firstValueFrom(this.api.create(data));
       if (generation !== this.generation || !this.isAdmin()) return;
       this.devices.update((devices) => [this.withoutToken(created), ...devices]);
+      this.page.set(1);
       this.createForm.reset();
       this.showCredential(created, 'created', this.createButton()?.nativeElement ?? null);
     } catch (error: unknown) {

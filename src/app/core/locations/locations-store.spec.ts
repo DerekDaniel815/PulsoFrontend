@@ -9,6 +9,7 @@ import { LocationsStore, VisibleLocation } from './locations-store';
 vi.mock('socket.io-client', () => ({ io: vi.fn() }));
 
 describe('LocationsStore', () => {
+  const user = signal({ rol: 'USUARIO' as 'USUARIO' | 'ADMIN' });
   const handlers = new Map<string, (payload: { idUsuarioDispositivo: number }) => void>();
   const socket = {
     on: vi.fn((event: string, handler: (payload: { idUsuarioDispositivo: number }) => void) => {
@@ -31,6 +32,7 @@ describe('LocationsStore', () => {
   };
 
   beforeEach(() => {
+    user.set({ rol: 'USUARIO' });
     handlers.clear();
     vi.mocked(io).mockReturnValue(socket as unknown as Socket);
     TestBed.configureTestingModule({
@@ -38,7 +40,7 @@ describe('LocationsStore', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: SessionStore, useValue: {
-          isAuthenticated: signal(true), token: signal('jwt'),
+          isAuthenticated: signal(true), token: signal('jwt'), user,
         } },
       ],
     });
@@ -69,5 +71,15 @@ describe('LocationsStore', () => {
     expect(store.locations()).toHaveLength(0);
     current.flush([]);
     await vi.waitFor(() => expect(store.locations()).toHaveLength(0));
+  });
+
+  it('does not connect or load user locations for ADMIN', async () => {
+    user.set({ rol: 'ADMIN' });
+    const store = TestBed.inject(LocationsStore);
+    TestBed.tick();
+    await store.refresh();
+    expect(socket.connect).not.toHaveBeenCalled();
+    expect(TestBed.inject(HttpTestingController).match(() => true)).toEqual([]);
+    expect(store.locations()).toEqual([]);
   });
 });

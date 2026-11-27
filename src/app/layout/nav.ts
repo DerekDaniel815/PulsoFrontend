@@ -1,3 +1,5 @@
+import type { PulsoUser } from '../core/auth/auth.models';
+
 export type NavIcon =
   | 'dashboard'
   | 'map'
@@ -6,7 +8,6 @@ export type NavIcon =
   | 'alerts'
   | 'history'
   | 'devices'
-  | 'zones'
   | 'settings';
 
 export interface NavItem {
@@ -26,6 +27,9 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/alertas', label: 'Alertas', icon: 'alerts' },
   { path: '/historial', label: 'Historial', icon: 'history' },
   { path: '/inventario', label: 'Inventario', icon: 'devices', adminOnly: true },
-  { path: '/zonas-seguras', label: 'Zonas Seguras', shortLabel: 'Zonas', icon: 'zones' },
   { path: '/configuracion', label: 'Configuración', shortLabel: 'Ajustes', icon: 'settings' },
 ];
+
+export function navItemsForRole(role: PulsoUser['rol'] | undefined): NavItem[] {
+  return NAV_ITEMS.filter((item) => role === 'ADMIN' ? item.adminOnly : !item.adminOnly);
+}

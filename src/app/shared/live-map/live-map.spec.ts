@@ -31,6 +31,22 @@ class MapMarkerStub {
   readonly mapMouseout = output<google.maps.MapMouseEvent>();
 }
 
+class OverlayViewStub {
+  static pixel = { x: 200, y: 150 };
+  onAdd(): void {}
+  draw(): void {}
+  onRemove(): void {}
+  getProjection() {
+    return { fromLatLngToContainerPixel: () => OverlayViewStub.pixel };
+  }
+  setMap(map: google.maps.Map | null): void {
+    if (map) {
+      this.onAdd();
+      this.draw();
+    } else this.onRemove();
+  }
+}
+
 describe('LiveMap for a selected contact', () => {
   const visible = signal<VisibleLocation[]>([]);
   const contacts = signal<ContactRecord[]>([]);
@@ -61,6 +77,7 @@ describe('LiveMap for a selected contact', () => {
         LatLngBounds: class {
           extend = vi.fn();
         },
+        OverlayView: OverlayViewStub,
       },
     });
     await TestBed.configureTestingModule({
@@ -324,6 +341,7 @@ describe('LiveMap marker details', () => {
         ControlPosition: { LEFT_BOTTOM: 1, RIGHT_BOTTOM: 2 },
         Size: class { constructor(_width: number, _height: number) {} },
         Point: class { constructor(_x: number, _y: number) {} },
+        OverlayView: OverlayViewStub,
       },
     });
     await TestBed.configureTestingModule({
@@ -346,6 +364,41 @@ describe('LiveMap marker details', () => {
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps the details next to the marker while the map is dragged or zoomed', () => {
+    OverlayViewStub.pixel = { x: 200, y: 150 };
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    vi.spyOn(fixture.nativeElement, 'getBoundingClientRect').mockReturnValue({
+      left: 0, top: 0, width: 900, height: 600, right: 900, bottom: 600,
+      x: 0, y: 0, toJSON: () => ({}),
+    });
+    fixture.componentInstance['onMapInitialized']({
+      getDiv: () => fixture.nativeElement,
+    } as unknown as google.maps.Map);
+    const marker = fixture.componentInstance['markers']()[0];
+    fixture.componentInstance['selectMarker'](marker, {
+      domEvent: new MouseEvent('click', { clientX: 800, clientY: 500 }),
+    } as google.maps.MapMouseEvent);
+    fixture.detectChanges();
+    const details = fixture.nativeElement.querySelector('.marker-details') as HTMLElement;
+    expect(details.style.left).toBe('216px');
+    expect(details.style.top).toBe('90px');
+
+    OverlayViewStub.pixel = { x: 310, y: 260 };
+    fixture.componentInstance['mapOverlay']?.draw();
+    fixture.detectChanges();
+    expect(details.style.left).toBe('326px');
+    expect(details.style.top).toBe('200px');
+
+    OverlayViewStub.pixel = { x: -10, y: 260 };
+    fixture.componentInstance['mapOverlay']?.draw();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.marker-details')).toBeNull();
+    fixture.destroy();
+  });
 
   it('shows the last recorded position and its capture time when it is not live', () => {
     visible.update((items) => [{

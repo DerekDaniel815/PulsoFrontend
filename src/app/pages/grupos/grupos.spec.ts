@@ -63,6 +63,25 @@ describe('Grupos', () => {
     expect(fixture.nativeElement.querySelector('.sharing-summary')?.textContent).toContain('Familia');
   });
 
+  it('does not offer unlinked GPS devices for group sharing', async () => {
+    http.get.mockImplementation((url: string) => of(url.endsWith('/groups')
+      ? [{ idGrupo: 1, nombre: 'Familia', idCreador: 1, estado: true, miembros: [member] }]
+      : url.endsWith('/user-devices/me')
+        ? [{ idUsuarioDispositivo: 9, alias: 'GPS activo', estado: true,
+            visibilidadPreferida: 'GRUPO', ubicacionActiva: true },
+          { idUsuarioDispositivo: 10, alias: 'GPS desvinculado', estado: false,
+            visibilidadPreferida: 'GRUPO', ubicacionActiva: true }]
+        : []));
+    fixture.destroy();
+    fixture = TestBed.createComponent(Grupos);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll('.assignment-picker option') as NodeListOf<HTMLOptionElement>;
+    expect(options).toHaveLength(1);
+    expect(options[0].textContent).toContain('GPS activo');
+    expect(fixture.nativeElement.textContent).not.toContain('GPS desvinculado');
+  });
+
   it('opens the invitation form from the card details', async () => {
     (fixture.nativeElement.querySelector('.members-toggle') as HTMLButtonElement).click();
     await fixture.whenStable();

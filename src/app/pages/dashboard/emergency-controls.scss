@@ -1,0 +1,63 @@
+:host { display: block; }
+@media (min-width: 961px) {
+  :host { display: none; }
+}
+.emergency-card {
+  display: grid;
+  container-type: inline-size;
+  gap: 12px;
+  padding: var(--space-2);
+  border: 1px solid color-mix(in srgb, var(--emergency) 40%, var(--border));
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+h2 { margin: 0; font-size: 1rem; }
+p { margin: 0; color: var(--text-muted); font-size: .875rem; }
+.emergency-error { color: var(--emergency); }
+.emergency-notice { color: var(--text); }
+.own-emergencies { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.own-emergencies li { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.own-emergencies li > div { display: grid; gap: 4px; flex: 1 1 180px; min-width: 0; overflow-wrap: anywhere; }
+.own-emergencies li span { color: var(--text-muted); font-size: .875rem; }
+.own-emergencies .id-warning { flex: 1 1 100%; }
+.activate-form { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; gap: 12px; }
+.activate-form label { display: grid; min-width: 0; gap: 6px; font-size: .875rem; }
+.description-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
+.description-count { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.activate-form select, .activate-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--surface);
+  font: inherit;
+}
+.activate-form textarea {
+  height: 112px;
+  resize: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+@container (min-width: 460px) {
+  .activate-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .activate-form textarea { height: 40px; }
+  .activate-form button { grid-column: 1 / -1; justify-self: start; }
+}
+.emergency-card button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--emergency);
+  border-radius: 9px;
+  color: var(--text);
+  background: var(--emergency-soft);
+  cursor: pointer;
+}
+.emergency-card button:disabled { opacity: .6; cursor: not-allowed; }
+.emergency-card button:focus-visible,
+.emergency-card select:focus-visible,
+.emergency-card textarea:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }

@@ -4,16 +4,10 @@ import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../../core/auth/auth.config';
 import { SessionStore } from '../../core/auth/session-store';
 import { ContactsApi, PublicUser } from '../../core/contacts/contacts-api';
+import { UserDeviceAssignment, isActiveUserDevice } from '../../core/devices/user-devices-api';
 import { GroupSharing, GroupSharingApi } from '../../core/groups/group-sharing-api';
 import { Group, GroupMember, GroupsApi, Invitation } from '../../core/groups/groups-api';
 import { LocationsStore } from '../../core/locations/locations-store';
-
-interface Assignment {
-  idUsuarioDispositivo: number;
-  alias: string | null;
-  visibilidadPreferida: 'SOLO_YO' | 'GRUPO' | 'PUBLICO';
-  ubicacionActiva: boolean;
-}
 
 @Component({
   selector: 'app-grupos',
@@ -30,7 +24,7 @@ export class Grupos {
   private refreshGeneration = 0;
   private memberRequestGeneration = 0;
   protected readonly groups = signal<Group[]>([]);
-  protected readonly assignments = signal<Assignment[]>([]);
+  protected readonly assignments = signal<UserDeviceAssignment[]>([]);
   protected readonly selectedAssignmentId = signal<number | null>(null);
   protected readonly selectedAssignment = computed(() =>
     this.assignments().find((item) => item.idUsuarioDispositivo === this.selectedAssignmentId()) ?? null,
@@ -85,12 +79,13 @@ export class Grupos {
       const [groups, invitations, assignments] = await Promise.all([
         firstValueFrom(this.groupsApi.list()),
         firstValueFrom(this.groupsApi.invitations()),
-        firstValueFrom(this.http.get<Assignment[]>(`${PULSO_API_URL}/user-devices/me`)),
+        firstValueFrom(this.http.get<UserDeviceAssignment[]>(`${PULSO_API_URL}/user-devices/me`)),
       ]);
       if (generation !== this.refreshGeneration) return;
       this.groups.set(groups);
       this.invitations.set(invitations);
-      this.assignments.set(assignments);
+      const activeAssignments = assignments.filter(isActiveUserDevice);
+      this.assignments.set(activeAssignments);
       this.sentInvitations.update((items) => items.filter((item) => groups.some((group) => group.idGrupo === item.idGrupo)));
       const expanded = groups.find((group) => group.idGrupo === this.expandedGroupId());
       if (expanded) {
@@ -100,8 +95,8 @@ export class Grupos {
         this.expandedGroupId.set(null);
         this.members.set([]);
       }
-      if (!assignments.some((item) => item.idUsuarioDispositivo === this.selectedAssignmentId())) {
-        this.selectedAssignmentId.set(assignments[0]?.idUsuarioDispositivo ?? null);
+      if (!activeAssignments.some((item) => item.idUsuarioDispositivo === this.selectedAssignmentId())) {
+        this.selectedAssignmentId.set(activeAssignments[0]?.idUsuarioDispositivo ?? null);
       }
       this.error.set(null);
       await this.loadSharing();
@@ -271,7 +266,7 @@ export class Grupos {
     this.busy.set(true);
     this.error.set(null);
     try {
-      const updated = await firstValueFrom(this.http.patch<Assignment>(
+      const updated = await firstValueFrom(this.http.patch<UserDeviceAssignment>(
         `${PULSO_API_URL}/user-devices/${device.idUsuarioDispositivo}`, { ubicacionActiva: true },
       ));
       if (!updated.ubicacionActiva) throw new Error('El dispositivo sigue pausado.');
