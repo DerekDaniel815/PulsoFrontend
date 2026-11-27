@@ -42,6 +42,8 @@ export class LocationsStore {
   private fetchVersion = 0;
   private readonly locationsState = signal<VisibleLocation[]>([]);
   readonly locations = this.locationsState.asReadonly();
+  private readonly revokedAssignmentsState = signal<ReadonlySet<number>>(new Set());
+  readonly revokedAssignments = this.revokedAssignmentsState.asReadonly();
   readonly error = signal<string | null>(null);
   readonly connected = signal(false);
   readonly notificationVersion = signal(0);
@@ -57,6 +59,7 @@ export class LocationsStore {
       this.socket = null;
       this.connected.set(false);
       this.locationsState.set([]);
+      this.revokedAssignmentsState.set(new Set());
       this.error.set(null);
       if (!token) return;
 
@@ -81,6 +84,11 @@ export class LocationsStore {
         const item = this.toVisibleLocation(payload);
         if (!item) return;
         this.realtimeVersion++;
+        this.revokedAssignmentsState.update((ids) => {
+          const next = new Set(ids);
+          next.delete(item.assignment.idUsuarioDispositivo);
+          return next;
+        });
         this.locationsState.update((current) => [
           ...current.filter(
             (existing) => existing.assignment.idUsuarioDispositivo !== item.assignment.idUsuarioDispositivo,
@@ -93,6 +101,7 @@ export class LocationsStore {
         const id = (payload as { idUsuarioDispositivo?: unknown }).idUsuarioDispositivo;
         if (typeof id === 'number') {
           this.realtimeVersion++;
+          this.revokedAssignmentsState.update((ids) => new Set([...ids, id]));
           this.locationsState.update((items) =>
             items.filter((item) => item.assignment.idUsuarioDispositivo !== id),
           );
@@ -122,6 +131,11 @@ export class LocationsStore {
         void this.refresh();
       } else if (generation === this.generation && fetchVersion === this.fetchVersion) {
         this.locationsState.set(locations);
+        this.revokedAssignmentsState.update((ids) => {
+          const next = new Set(ids);
+          for (const item of locations) next.delete(item.assignment.idUsuarioDispositivo);
+          return next;
+        });
         this.error.set(null);
       }
     } catch {

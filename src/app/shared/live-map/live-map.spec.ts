@@ -8,7 +8,7 @@ import { SessionStore } from '../../core/auth/session-store';
 import { ContactRecord } from '../../core/contacts/contacts-api';
 import { VisibleLocation, LocationsStore } from '../../core/locations/locations-store';
 import { GoogleMapsLoader } from '../../core/maps/google-maps.loader';
-import { OverviewStore } from '../../core/overview/overview-store';
+import { ActiveEmergency, OverviewStore } from '../../core/overview/overview-store';
 import { LiveMap } from './live-map';
 
 @Component({ selector: 'google-map', template: '<ng-content />' })
@@ -34,8 +34,12 @@ class MapMarkerStub {
 describe('LiveMap for a selected contact', () => {
   const visible = signal<VisibleLocation[]>([]);
   const contacts = signal<ContactRecord[]>([]);
+  const emergencies = signal<ActiveEmergency[]>([]);
+  const revokedAssignments = signal<ReadonlySet<number>>(new Set());
 
   beforeEach(async () => {
+    emergencies.set([]);
+    revokedAssignments.set(new Set());
     contacts.set([{
       idUsuarioContacto: 3,
       contacto: { idUsuario: 12, nombres: 'Ana', apellidos: 'Ruiz' },
@@ -68,8 +72,8 @@ describe('LiveMap for a selected contact', () => {
           isAuthenticated: signal(true),
           user: signal({ idUsuario: 50, nombres: 'Lucía', apellidos: 'García' }),
         } },
-        { provide: LocationsStore, useValue: { locations: visible, error: signal(null) } },
-        { provide: OverviewStore, useValue: { contacts } },
+        { provide: LocationsStore, useValue: { locations: visible, revokedAssignments, error: signal(null) } },
+        { provide: OverviewStore, useValue: { contacts, emergencies } },
       ],
     }).overrideComponent(LiveMap, { set: { template: '', imports: [] } }).compileComponents();
   });
@@ -196,12 +200,114 @@ describe('LiveMap for a selected contact', () => {
     expect(fixture.componentInstance['selectedMarker']()).toBeNull();
     expect(fixture.componentInstance['hoveredMarkerId']()).toBeNull();
   });
+
+  it('restores the last authorized emergency position after a new page load with no live GPS', () => {
+    visible.set([]);
+    emergencies.set([{
+      idEmergencia: 'sos-1', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null,
+      ubicacion: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:03:00Z', isLive: true,
+      },
+      fechaUltimaUbicacion: '2026-11-19T12:03:00Z',
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+
+    const [marker] = fixture.componentInstance['markers']();
+    expect(marker.position).toEqual({ lat: 40.5, lng: -3.7 });
+    expect(fixture.componentInstance['center']()).toEqual(marker.position);
+    expect(marker.title).toBe('Emergencia autorizada');
+    expect(marker.emergencyActive).toBe(true);
+    expect(marker.observation?.isLive).toBe(false);
+    expect(marker.updatedAt).toBe('2026-11-19T12:03:00Z');
+    expect(fixture.componentInstance['freshness'](marker.observation!))
+      .toContain('Última ubicación conocida');
+    fixture.destroy();
+
+    const reopened = TestBed.createComponent(LiveMap);
+    reopened.componentInstance['ready'].set(true);
+    reopened.detectChanges();
+    expect(reopened.componentInstance['markers']()[0].position).toEqual(marker.position);
+    emergencies.set([]);
+    reopened.detectChanges();
+    expect(reopened.componentInstance['markers']()).toEqual([]);
+  });
+
+  it('does not attribute an emergency with no verified assignment to a selected person', () => {
+    visible.set([]);
+    emergencies.set([{
+      idEmergencia: 'sos-2', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null,
+      ubicacion: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:03:00Z',
+      },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentRef.setInput('selectedUserId', 99);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['canShowMap']()).toBe(false);
+    expect(fixture.componentInstance['markers']()).toEqual([]);
+  });
+
+  it('does not invent a location when an active emergency has no recorded coordinate', () => {
+    visible.set([]);
+    emergencies.set([{
+      idEmergencia: 'sos-no-position', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null, ubicacion: null,
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['markers']()).toEqual([]);
+  });
+
+  it('does not duplicate an emergency marker when the last location is already visible', () => {
+    emergencies.set([{
+      idEmergencia: 'sos-3', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null,
+      ubicacion: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:03:00Z',
+      },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['markers']().map((marker) => marker.id)).toEqual(['1', '2']);
+    expect(fixture.componentInstance['markers']()[0].emergencyActive).toBe(true);
+  });
+
+  it('hides an emergency fallback immediately when its assignment access is revoked', () => {
+    visible.set([]);
+    emergencies.set([{
+      idEmergencia: 'sos-revoked', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null,
+      ubicacion: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:03:00Z',
+      },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.detectChanges();
+    expect(fixture.componentInstance['markers']()).toHaveLength(1);
+    revokedAssignments.set(new Set([1]));
+    fixture.detectChanges();
+    expect(fixture.componentInstance['markers']()).toEqual([]);
+  });
 });
 
 describe('LiveMap marker details', () => {
   const visible = signal<VisibleLocation[]>([]);
+  const revokedAssignments = signal<ReadonlySet<number>>(new Set());
 
   beforeEach(async () => {
+    revokedAssignments.set(new Set());
     visible.set([{
       assignment: {
         idUsuarioDispositivo: 1, idUsuario: 12, alias: 'GPS de Ana',
@@ -229,8 +335,8 @@ describe('LiveMap marker details', () => {
           isAuthenticated: signal(true),
           user: signal({ idUsuario: 50, nombres: 'Lucía', apellidos: 'García' }),
         } },
-        { provide: LocationsStore, useValue: { locations: visible, error: signal(null) } },
-        { provide: OverviewStore, useValue: { contacts: signal([{
+        { provide: LocationsStore, useValue: { locations: visible, revokedAssignments, error: signal(null) } },
+        { provide: OverviewStore, useValue: { emergencies: signal([]), contacts: signal([{
           contacto: { idUsuario: 12, nombres: 'Ana', apellidos: 'Ruiz' },
         }]) } },
       ],
@@ -259,6 +365,30 @@ describe('LiveMap marker details', () => {
     expect(details.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-19T12:00:00Z');
     expect(details.textContent).toContain('Última ubicación conocida · puede no ser la posición actual');
     expect(details.textContent).not.toContain('Ubicación anterior; no indica la posición actual');
+  });
+
+  it('shows the server emergency snapshot as last known, not as a live position', () => {
+    visible.set([]);
+    TestBed.inject(OverviewStore).emergencies.set([{
+      idEmergencia: 'sos-snapshot', idUsuarioDispositivo: 1, estado: 'ACTIVA',
+      fechaInicio: '2026-11-19T12:00:00Z', descripcion: null,
+      ubicacion: {
+        idUsuarioDispositivo: 1, latitud: 40.5, longitud: -3.7,
+        fechaHoraDispositivo: '2026-11-19T12:03:00Z', isLive: true,
+      },
+    }]);
+    const fixture = TestBed.createComponent(LiveMap);
+    fixture.componentInstance['ready'].set(true);
+    fixture.componentInstance['locating'].set(false);
+    fixture.detectChanges();
+    fixture.componentInstance['showMarkerPreview'](fixture.componentInstance['markers']()[0]);
+    fixture.detectChanges();
+
+    const details = fixture.nativeElement.querySelector('.marker-details') as HTMLElement;
+    expect(details.textContent).toContain('Emergencia autorizada');
+    expect(details.textContent).toContain('Sin ubicación en vivo');
+    expect(details.textContent).toContain('Última ubicación conocida');
+    expect(details.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-19T12:03:00Z');
   });
 
   it('keeps the recent label for a position whose server validity has not expired', () => {
@@ -411,8 +541,10 @@ describe('LiveMap público', () => {
           { provide: SessionStore, useValue: {
             isAuthenticated: authenticated, user: signal(null),
           } },
-          { provide: LocationsStore, useValue: { locations: signal([]), error: signal(null) } },
-          { provide: OverviewStore, useValue: { contacts: signal([]) } },
+          { provide: LocationsStore, useValue: {
+            locations: signal([]), revokedAssignments: signal<ReadonlySet<number>>(new Set()), error: signal(null),
+          } },
+          { provide: OverviewStore, useValue: { contacts: signal([]), emergencies: signal([]) } },
         ],
       }).overrideComponent(LiveMap, { set: { template: '', imports: [] } }).compileComponents();
       const fixture = TestBed.createComponent(LiveMap);

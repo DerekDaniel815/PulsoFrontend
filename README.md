@@ -2,6 +2,19 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.1.7.
 
+## Última ubicación durante una emergencia
+
+El mapa consulta `GET /locations/visible` y `GET /emergencies/active` al
+iniciar sesión; al abrir `/mapa` vuelve a consultar ambas fuentes. Si una
+emergencia activa autorizada incluye `ubicacion` pero el GPS ya no aparece en
+las ubicaciones visibles, el mapa general muestra un marcador de emergencia
+con la **última ubicación conocida** y la hora real de captura. No se presenta
+como ubicación en vivo ni se guarda en el navegador. En una vista filtrada por
+persona, el dispositivo solo se asocia a esa persona cuando
+`/locations/visible` devuelve su asignación; el DTO de emergencia no incluye
+el identificador del propietario. Sin una coordenada previa proporcionada por
+el servidor, no se puede mostrar una posición al apagarse el GPS.
+
 ## Contrato pendiente: historial de GPS compartidos sin reportes recientes
 
 La página `/historial` consulta los GPS propios con `GET /user-devices/me` y necesita

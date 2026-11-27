@@ -43,11 +43,12 @@ describe('Mapa de una persona autorizada', () => {
           user: signal({ idUsuario: 1, nombres: 'Yo', apellidos: 'Mismo' }),
         } },
         { provide: LocationsStore, useValue: {
-          locations: visible, connected: signal(true), error: signal(null), refresh: vi.fn(async () => {}),
+          locations: visible, revokedAssignments: signal<ReadonlySet<number>>(new Set()),
+          connected: signal(true), error: signal(null), refresh: vi.fn(async () => {}),
         } },
         { provide: OverviewStore, useValue: {
           contacts: signal([{ contacto: { idUsuario: 12, nombres: 'Ana', apellidos: 'Ruiz' } }]),
-          emergencies,
+          emergencies, refresh: vi.fn(async () => {}),
         } },
       ],
     }).compileComponents();

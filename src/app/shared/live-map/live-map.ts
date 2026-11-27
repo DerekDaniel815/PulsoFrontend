@@ -19,7 +19,7 @@ interface ReadyMarker {
   observation?: LocationData;
   emergencyActive?: boolean;
   publicCode?: string;
-  kind: 'self' | 'private' | 'public';
+  kind: 'self' | 'private' | 'public' | 'emergency';
   position: google.maps.LatLngLiteral;
   options: google.maps.MarkerOptions;
 }
@@ -67,6 +67,7 @@ export class LiveMap {
   readonly overlayLayout = input(false);
   readonly selectedUserId = input<number | null>(null);
   private mapInstance: google.maps.Map | null = null;
+  private centeredEmergencyId: string | null = null;
   private fittedUserId: number | null = null;
   private fittedWithOwn = false;
   private lastSelectedUserId: number | null = null;
@@ -137,10 +138,12 @@ export class LiveMap {
     });
     effect(() => {
       this.locations.locations();
+      this.locations.revokedAssignments();
       this.publicLocations();
       this.session.isAuthenticated();
       this.session.user();
       this.overview.contacts();
+      this.overview.emergencies();
       const own = this.ownPosition();
       const userId = this.selectedUserId();
       if (userId !== this.lastSelectedUserId) {
@@ -261,7 +264,7 @@ export class LiveMap {
       ({ coords }) => {
         const position = { lat: coords.latitude, lng: coords.longitude };
         this.ownPosition.set(position);
-        if (this.selectedUserId() === null) this.center.set(position);
+        if (this.selectedUserId() === null && !this.centeredEmergencyId) this.center.set(position);
         this.locating.set(false);
         this.locationMessage.set(null);
         this.updateMarkers();
@@ -428,6 +431,10 @@ export class LiveMap {
       ? this.locations.locations()
       : this.locations.locations().filter((item) => item.assignment.idUsuario === selectedUserId);
     const contacts = this.overview.contacts();
+    const revoked = this.locations.revokedAssignments();
+    const emergencies = this.overview.emergencies().filter((item) =>
+      item.estado === 'ACTIVA' && !revoked.has(item.idUsuarioDispositivo));
+    const emergencyIds = new Set(emergencies.map((item) => item.idUsuarioDispositivo));
     const me = this.session.user();
     const privatePoints: MapPoint[] = visibleLocations.map((item) => {
       const user = item.assignment.idUsuario === me?.idUsuario
@@ -437,7 +444,7 @@ export class LiveMap {
         id: String(item.assignment.idUsuarioDispositivo),
         title: user ? `${user.nombres} ${user.apellidos}`.trim() : 'Dispositivo autorizado',
         initials: user ? this.initials(user.nombres, user.apellidos) : '?',
-        status: item.emergenciaActiva ? 'emergencia' :
+        status: item.emergenciaActiva || emergencyIds.has(item.assignment.idUsuarioDispositivo) ? 'emergencia' :
           locationStatus(item.location, this.now()) === 'recent' ? 'conectado' : 'anterior',
         position: { lat: item.location.latitud, lng: item.location.longitud },
       };
@@ -451,6 +458,38 @@ export class LiveMap {
     }));
     const points = this.session.isAuthenticated() ? privatePoints : publicPoints;
     const visibleById = new Map(visibleLocations.map((item) => [String(item.assignment.idUsuarioDispositivo), item]));
+    const fallbackById = new Map<string, LocationData>();
+    // El endpoint de emergencias solo identifica la asignación, no al dueño.
+    // En la vista de una persona no se puede asociar un punto sin la asignación
+    // autorizada de /locations/visible; en el mapa general sí es visible.
+    if (this.session.isAuthenticated() && selectedUserId === null) {
+      for (const emergency of emergencies) {
+        const id = emergency.idUsuarioDispositivo;
+        const location = emergency.ubicacion;
+        if (visibleById.has(String(id)) || !location ||
+            !Number.isFinite(location.latitud) || !Number.isFinite(location.longitud)) continue;
+        const capturedAt = location.fechaHoraDispositivo || emergency.fechaUltimaUbicacion || '';
+        const key = `emergency-${emergency.idEmergencia}`;
+        fallbackById.set(key, {
+          ...location, idUsuarioDispositivo: id, fechaHoraDispositivo: capturedAt, isLive: false,
+        });
+        points.push({
+          id: key, title: 'Emergencia autorizada', initials: 'SOS',
+          status: 'emergencia',
+          position: { lat: location.latitud, lng: location.longitud },
+        });
+      }
+    }
+    const firstEmergency = fallbackById.keys().next().value;
+    if (selectedUserId === null && visibleLocations.length === 0 && firstEmergency) {
+      if (this.centeredEmergencyId !== firstEmergency) {
+        this.centeredEmergencyId = firstEmergency;
+        const location = fallbackById.get(firstEmergency)!;
+        this.center.set({ lat: location.latitud, lng: location.longitud });
+      }
+    } else {
+      this.centeredEmergencyId = null;
+    }
     const publicById = new Map(this.publicLocations().map((item) => [`public-${item.clavePublica}`, item]));
 
     const currentPosition = this.ownPosition();
@@ -468,12 +507,16 @@ export class LiveMap {
       points.map((point) => ({
         id: point.id,
         title: point.title,
-        kind: point.id === 'tu' ? 'self' : point.id.startsWith('public-') ? 'public' : 'private',
-        deviceLabel: visibleById.get(point.id)?.assignment.alias ?? undefined,
-        observation: visibleById.get(point.id)?.location,
-        emergencyActive: visibleById.get(point.id)?.emergenciaActiva,
+        kind: point.id === 'tu' ? 'self' : point.id.startsWith('public-') ? 'public' :
+          fallbackById.has(point.id) ? 'emergency' : 'private',
+        deviceLabel: visibleById.get(point.id)?.assignment.alias ??
+          (fallbackById.has(point.id) ? `Dispositivo ${fallbackById.get(point.id)?.idUsuarioDispositivo}` : undefined),
+        observation: visibleById.get(point.id)?.location ?? fallbackById.get(point.id),
+        emergencyActive: visibleById.get(point.id)?.emergenciaActiva ||
+          emergencyIds.has(Number(point.id)) || fallbackById.has(point.id),
         publicCode: publicById.get(point.id)?.codigoPublico ?? undefined,
         updatedAt: visibleById.get(point.id)?.location.fechaHoraDispositivo ??
+          fallbackById.get(point.id)?.fechaHoraDispositivo ??
           publicById.get(point.id)?.ubicacion.fechaHoraDispositivo,
         position: point.position,
         options: markerOptions(point),

@@ -4,7 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { PULSO_API_URL } from '../auth/auth.config';
 import { SessionStore } from '../auth/session-store';
 import { ContactRecord, ContactsApi } from '../contacts/contacts-api';
-import { LocationsStore } from '../locations/locations-store';
+import { LocationData, LocationsStore } from '../locations/locations-store';
 import { NotificationRecord, NotificationsApi } from '../notifications/notifications-api';
 
 export interface ActiveEmergency {
@@ -13,6 +13,8 @@ export interface ActiveEmergency {
   descripcion: string | null;
   fechaInicio: string;
   estado: string;
+  ubicacion?: LocationData | null;
+  fechaUltimaUbicacion?: string | null;
 }
 
 @Service()
@@ -56,7 +58,9 @@ export class OverviewStore {
     ]);
     if (generation !== this.generation || !this.session.isAuthenticated()) return;
     if (contacts.status === 'fulfilled') this.contacts.set(contacts.value);
-    if (emergencies.status === 'fulfilled') this.emergencies.set(emergencies.value);
+    // Nunca conservar emergencias de una consulta anterior si no se pueden
+    // confirmar de nuevo los permisos del usuario actual.
+    this.emergencies.set(emergencies.status === 'fulfilled' ? emergencies.value : []);
     if (notifications.status === 'fulfilled') this.notifications.set(notifications.value);
     if (unread.status === 'fulfilled') this.unreadCount.set(unread.value.count);
   }

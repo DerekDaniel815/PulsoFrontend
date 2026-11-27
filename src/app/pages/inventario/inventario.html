@@ -1,0 +1,135 @@
+@if (isAdmin()) {
+<section class="inventory-page" aria-labelledby="inventory-page-title">
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Administración · solo rol ADMIN</p>
+      <h1 id="inventory-page-title">Inventario de dispositivos</h1>
+      <p class="intro">Registra equipos y administra sus estados y credenciales de firmware.</p>
+    </div>
+    <button type="button" [disabled]="loading() || busy()" (click)="loadDevices()">Actualizar lista</button>
+  </header>
+
+  @if (error()) { <p class="feedback" role="alert">{{ error() }}</p> }
+  @if (notice()) { <p class="feedback" role="status">{{ notice() }}</p> }
+
+  <form class="create-device" [formGroup]="createForm" (ngSubmit)="create()" aria-labelledby="create-title">
+    <h2 id="create-title">Registrar equipo</h2>
+    <p>El servidor genera el código de vinculación. El administrador no debe introducirlo.</p>
+    <div class="form-grid">
+      <label>IMEI (opcional)
+        <input type="text" formControlName="imei" maxlength="30" autocomplete="off" />
+      </label>
+      <label>Modelo (opcional)
+        <input type="text" formControlName="modelo" maxlength="100" autocomplete="off" />
+      </label>
+      <label>Número de serie (opcional)
+        <input type="text" formControlName="numeroSerie" maxlength="100" autocomplete="off" />
+      </label>
+      <label>Fecha de fabricación (opcional)
+        <input type="date" formControlName="fechaFabricacion" />
+      </label>
+    </div>
+    <button #createButton type="submit" [disabled]="busy() || createForm.invalid || !isAdmin()">
+      {{ busy() ? 'Procesando…' : 'Crear equipo' }}
+    </button>
+  </form>
+
+  @if (credential(); as receipt) {
+    <section class="credential-receipt" aria-labelledby="credential-title">
+      <h2 #credentialTitle id="credential-title" tabindex="-1">
+        {{ receipt.action === 'created' ? 'Equipo creado' : 'Credencial regenerada' }}
+      </h2>
+      <p>Guarda el token del firmware ahora. No vuelve a aparecer en el inventario ni en el detalle.</p>
+      <dl>
+        <div><dt>Código de vinculación para el usuario</dt><dd><code>{{ receipt.code }}</code></dd></div>
+        <div><dt>Device token · solo para el firmware</dt><dd><code>{{ receipt.token }}</code></dd></div>
+      </dl>
+      <button type="button" (click)="closeCredential()">Ya guardé el token · ocultar</button>
+    </section>
+  }
+
+  <div class="inventory-layout">
+    <section class="inventory-list" aria-labelledby="inventory-title">
+      <h2 id="inventory-title">Equipos registrados</h2>
+      @if (loading()) { <p role="status">Cargando inventario…</p> }
+      @if (!loading() && !devices().length && !error()) {
+        <p>No hay dispositivos registrados.</p>
+      }
+      @if (devices().length) {
+        <div class="table-scroll">
+          <table>
+            <caption class="sr-only">Inventario de dispositivos</caption>
+            <thead><tr><th scope="col">Código</th><th scope="col">Modelo</th>
+              <th scope="col">Estado</th><th scope="col">Última conexión</th></tr></thead>
+            <tbody>
+              @for (device of devices(); track device.idDispositivo) {
+                <tr>
+                  <th scope="row">
+                    <button type="button" [disabled]="busy()" [attr.aria-label]="'Ver detalles de ' + device.codigoDispositivo"
+                      (click)="selectDevice(device.idDispositivo)">{{ device.codigoDispositivo }}</button>
+                  </th>
+                  <td>{{ device.modelo || 'Sin modelo' }}</td>
+                  <td>{{ statusLabel(device.estado) }}</td>
+                  <td>
+                    @if (device.ultimaConexion) {
+                      <time [attr.datetime]="device.ultimaConexion">{{ device.ultimaConexion | date: 'short' }}</time>
+                    } @else { Sin conexión registrada }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+
+    @if (detailLoading()) { <p class="detail-notice" role="status">Cargando detalles…</p> }
+    @if (detailError()) { <p class="detail-notice" role="alert">{{ detailError() }}</p> }
+    @if (selected(); as device) {
+      <section class="device-details" aria-labelledby="detail-title">
+        <h2 #detailTitle id="detail-title" tabindex="-1">Dispositivo {{ device.codigoDispositivo }}</h2>
+        <dl class="device-facts">
+          <div><dt>ID interno</dt><dd>{{ device.idDispositivo }}</dd></div>
+          <div><dt>Estado</dt><dd>{{ statusLabel(device.estado) }}</dd></div>
+          <div><dt>IMEI</dt><dd>{{ device.imei || 'No registrado' }}</dd></div>
+          <div><dt>Número de serie</dt><dd>{{ device.numeroSerie || 'No registrado' }}</dd></div>
+          <div><dt>Última conexión técnica</dt><dd>
+            @if (device.ultimaConexion) {
+              <time [attr.datetime]="device.ultimaConexion">{{ device.ultimaConexion | date: 'medium' }}</time>
+            } @else { No registrada }
+          </dd></div>
+          <div><dt>Fabricación</dt><dd>
+            @if (device.fechaFabricacion) {
+              <time [attr.datetime]="device.fechaFabricacion">{{ device.fechaFabricacion | date: 'mediumDate' }}</time>
+            } @else { No registrada }
+          </dd></div>
+          <div><dt>Alta en inventario</dt><dd><time [attr.datetime]="device.fechaRegistro">{{ device.fechaRegistro | date: 'medium' }}</time></dd></div>
+        </dl>
+        <form class="edit-device" [formGroup]="editForm" (ngSubmit)="update()" aria-labelledby="edit-title">
+          <h3 id="edit-title">Editar equipo</h3>
+          <label>Modelo
+            <input type="text" formControlName="modelo" maxlength="100" autocomplete="off" />
+          </label>
+          <label>Estado
+            <select formControlName="estado">
+              @for (status of statuses; track status) {
+                <option [value]="status" [disabled]="status === 'ASIGNADO' && device.estado !== 'ASIGNADO'">
+                  {{ statusLabel(status) }}
+                </option>
+              }
+            </select>
+          </label>
+          <p>Solo <strong>DISPONIBLE</strong> permite vincular el código. El estado ASIGNADO se determina al vincularlo un usuario.</p>
+          <button type="submit" [disabled]="busy() || editForm.invalid || !isAdmin()">Guardar cambios</button>
+        </form>
+        <div class="token-action">
+          <h3>Credencial del firmware</h3>
+          <p>Regenerarla invalida el token anterior. El nuevo token solo se mostrará una vez.</p>
+          <button #regenerateButton type="button" [disabled]="busy() || !isAdmin()"
+            (click)="regenerate(regenerateButton)">Regenerar device token</button>
+        </div>
+      </section>
+    }
+  </div>
+</section>
+}

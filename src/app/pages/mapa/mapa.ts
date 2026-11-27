@@ -38,5 +38,6 @@ export class Mapa {
 
   constructor() {
     void this.locations.refresh().finally(() => this.refreshing.set(false));
+    void this.overview.refresh();
   }
 }
