@@ -60,6 +60,7 @@ describe('LocationsStore', () => {
     const stale = http.expectOne((request) => request.url.endsWith('/locations/visible'));
     handlers.get('location.private.removed')?.({ idUsuarioDispositivo: 7 });
     expect(store.locations()).toHaveLength(0);
+    expect(store.revokedAssignments().has(7)).toBe(true);
     expect(store.notificationVersion()).toBe(1);
 
     stale.flush([location]);

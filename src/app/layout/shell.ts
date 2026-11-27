@@ -31,7 +31,9 @@ export class Shell {
   protected readonly layout = inject(LayoutMode);
   protected readonly mobileNavOpen = signal(false);
 
-  protected readonly navItems = NAV_ITEMS;
+  protected readonly navItems = computed(() =>
+    NAV_ITEMS.filter((item) => !item.adminOnly || this.session.user()?.rol === 'ADMIN'),
+  );
 
   private readonly url = toSignal(
     this.router.events.pipe(
@@ -44,7 +46,7 @@ export class Shell {
 
   protected readonly pageTitle = computed(() => {
     const current = this.url();
-    return this.navItems.find((item) => current.startsWith(item.path))?.label ?? 'Dashboard';
+    return this.navItems().find((item) => current.startsWith(item.path))?.label ?? 'Dashboard';
   });
 
   protected readonly userName = computed(() => {
@@ -70,6 +72,11 @@ export class Shell {
       if (this.focusAfterNavigation) {
         this.focusAfterNavigation = false;
         queueMicrotask(() => this.mainContent()?.nativeElement.focus());
+      }
+      if (currentUrl.startsWith('/inventario') && this.session.isAuthenticated() &&
+          this.session.user()?.rol !== 'ADMIN') {
+        void this.router.navigate(['/dashboard']);
+        return;
       }
       if (this.session.isAuthenticated() || this.loggingOut || currentUrl.startsWith('/dashboard')) {
         return;

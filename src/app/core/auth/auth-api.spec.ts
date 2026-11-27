@@ -58,10 +58,10 @@ describe('AuthApi', () => {
     request.flush(AUTH_RESPONSE);
   });
 
-  it('loads the current profile from users', () => {
+  it('confirms the current user role with auth/me', () => {
     api.getCurrentUser().subscribe((response) => expect(response).toEqual(USER));
 
-    const request = http.expectOne(`${PULSO_API_URL}/users/me`);
+    const request = http.expectOne(`${PULSO_API_URL}/auth/me`);
     expect(request.request.method).toBe('GET');
     request.flush(USER);
   });

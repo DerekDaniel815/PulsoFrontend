@@ -53,6 +53,19 @@ describe('authInterceptor', () => {
     mapRequest.flush({});
   });
 
+  it('authenticates inventory and role confirmation requests with the bearer token', () => {
+    const client = TestBed.inject(HttpClient);
+    client.get(`${PULSO_API_URL}/auth/me`).subscribe();
+    const profile = http.expectOne(`${PULSO_API_URL}/auth/me`);
+    expect(profile.request.headers.get('Authorization')).toBe('Bearer test-token');
+    profile.flush(SESSION.user);
+
+    client.get(`${PULSO_API_URL}/devices`).subscribe();
+    const inventory = http.expectOne(`${PULSO_API_URL}/devices`);
+    expect(inventory.request.headers.get('Authorization')).toBe('Bearer test-token');
+    inventory.flush([]);
+  });
+
   it('does not add an existing token to public authentication requests', () => {
     const client = TestBed.inject(HttpClient);
     client

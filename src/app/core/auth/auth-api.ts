@@ -17,6 +17,6 @@ export class AuthApi {
   }
 
   getCurrentUser(): Observable<PulsoUser> {
-    return this.http.get<PulsoUser>(`${PULSO_API_URL}/users/me`);
+    return this.http.get<PulsoUser>(`${PULSO_API_URL}/auth/me`);
   }
 }

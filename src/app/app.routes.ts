@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/auth/admin.guard';
 import { Shell } from './layout/shell';
 
 export const routes: Routes = [
@@ -40,6 +41,11 @@ export const routes: Routes = [
         path: 'historial',
         canActivate: [authGuard],
         loadComponent: () => import('./pages/historial/historial').then((m) => m.Historial),
+      },
+      {
+        path: 'inventario',
+        canActivate: [adminGuard],
+        loadComponent: () => import('./pages/inventario/inventario').then((m) => m.Inventario),
       },
       {
         path: 'zonas-seguras',

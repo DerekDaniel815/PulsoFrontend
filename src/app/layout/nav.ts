@@ -5,6 +5,7 @@ export type NavIcon =
   | 'groups'
   | 'alerts'
   | 'history'
+  | 'devices'
   | 'zones'
   | 'settings';
 
@@ -14,6 +15,7 @@ export interface NavItem {
   shortLabel?: string;
   icon: NavIcon;
   badge?: number;
+  adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -23,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/grupos', label: 'Grupos', icon: 'groups' },
   { path: '/alertas', label: 'Alertas', icon: 'alerts' },
   { path: '/historial', label: 'Historial', icon: 'history' },
+  { path: '/inventario', label: 'Inventario', icon: 'devices', adminOnly: true },
   { path: '/zonas-seguras', label: 'Zonas Seguras', shortLabel: 'Zonas', icon: 'zones' },
   { path: '/configuracion', label: 'Configuración', shortLabel: 'Ajustes', icon: 'settings' },
 ];

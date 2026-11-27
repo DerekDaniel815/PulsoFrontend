@@ -15,7 +15,7 @@
         (mouseenter)="cancelPreviewHide()" (mouseleave)="onPreviewLeave()">
         <div class="marker-details-heading">
           <div>
-            <p class="marker-details-eyebrow">{{ marker.kind === 'self' ? 'Tu posición' : marker.kind === 'public' ? 'Ubicación pública' : 'Ubicación compartida' }}</p>
+            <p class="marker-details-eyebrow">{{ marker.kind === 'self' ? 'Tu posición' : marker.kind === 'public' ? 'Ubicación pública' : marker.kind === 'emergency' ? 'Emergencia autorizada' : 'Ubicación compartida' }}</p>
             @if (marker.observation) {
               <h2 #detailsTitle id="marker-details-title" tabindex="-1">
                 <button type="button" class="marker-details-toggle"
@@ -49,6 +49,7 @@
           }
           @if (marker.observation; as location) {
             @if (marker.emergencyActive) { <p class="emergency-note">Emergencia activa · solo consulta</p> }
+            @if (marker.kind === 'emergency') { <p>Sin ubicación en vivo. Esta es la última posición que devolvió el servidor.</p> }
             <p>{{ freshness(location) }}@if (approximate(location)) { · Posición aproximada }</p>
             <div class="marker-details-extra" [id]="'marker-details-extra-' + marker.id"
               [hidden]="expandedMarkerId() !== marker.id">

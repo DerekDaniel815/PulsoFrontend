@@ -41,7 +41,7 @@
     </div>
 
     <nav class="menu" id="sidebar-menu" aria-label="Secciones">
-      @for (item of navItems; track item.path) {
+      @for (item of navItems(); track item.path) {
         <a
           class="nav-link"
           [routerLink]="item.path"
@@ -98,6 +98,12 @@
                 <svg viewBox="0 0 24 24" fill="none">
                   <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" stroke="currentColor" stroke-width="1.6" />
                   <path d="M4.5 5.5V9h3.4M12 8.5V12l2.6 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+                </svg>
+              }
+              @case ('devices') {
+                <svg viewBox="0 0 24 24" fill="none">
+                  <rect x="5" y="3.5" width="14" height="17" rx="2" stroke="currentColor" stroke-width="1.6" />
+                  <path d="M9 8h6M9 12h6M9 16h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
                 </svg>
               }
               @case ('zones') {
